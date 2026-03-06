@@ -1,0 +1,106 @@
+{% extends "layout.html" %}
+{% block title %}Bulk Payment{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card stat-card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-cash-stack"></i> Bulk Payment Recording</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('payments.bulk_record') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Select Class <span class="text-danger">*</span></label>
+                            <select name="class_id" id="classSelect" class="form-select" required>
+                                <option value="">-- Select Class --</option>
+                                {% for c in classes %}
+                                <option value="{{ c.id }}">{{ c.class_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Amount (GH&#8373;)</label>
+                            <input type="number" name="amount" class="form-control" value="{{ default_amount }}" step="0.01" min="0.01" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Payment Date</label>
+                            <input type="date" name="payment_date" class="form-control" value="{{ today }}" required>
+                        </div>
+                    </div>
+
+                    <div id="studentsContainer" class="d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold mb-0">Select Students</h6>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="selectAll">Select All</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAll">Deselect All</button>
+                            </div>
+                        </div>
+                        <div class="border rounded p-3" id="studentsList" style="max-height:400px;overflow-y:auto;">
+                            <p class="text-muted">Loading students...</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-mt-green btn-lg" id="submitBtn" disabled>
+                            <i class="bi bi-check-circle"></i> Record Bulk Payment
+                        </button>
+                        <a href="{{ url_for('payments.list_payments') }}" class="btn btn-outline-secondary btn-lg ms-2">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('classSelect').addEventListener('change', function() {
+    const classId = this.value;
+    const container = document.getElementById('studentsContainer');
+    const list = document.getElementById('studentsList');
+    const submitBtn = document.getElementById('submitBtn');
+
+    if (!classId) {
+        container.classList.add('d-none');
+        submitBtn.disabled = true;
+        return;
+    }
+
+    fetch(`{{ url_for('payments.get_students_by_class', class_id=0) }}`.replace('/0', '/' + classId))
+        .then(r => r.json())
+        .then(students => {
+            container.classList.remove('d-none');
+            if (students.length === 0) {
+                list.innerHTML = '<p class="text-muted">No active students in this class.</p>';
+                submitBtn.disabled = true;
+                return;
+            }
+
+            let html = '';
+            students.forEach(s => {
+                html += `<div class="form-check mb-2">
+                    <input class="form-check-input student-check" type="checkbox" name="student_ids" value="${s.id}" id="student_${s.id}" checked>
+                    <label class="form-check-label" for="student_${s.id}">
+                        <strong>${s.full_name}</strong> <code class="ms-1">${s.student_id}</code>
+                    </label>
+                </div>`;
+            });
+            list.innerHTML = html;
+            submitBtn.disabled = false;
+        });
+});
+
+document.getElementById('selectAll').addEventListener('click', () => {
+    document.querySelectorAll('.student-check').forEach(cb => cb.checked = true);
+});
+document.getElementById('deselectAll').addEventListener('click', () => {
+    document.querySelectorAll('.student-check').forEach(cb => cb.checked = false);
+});
+</script>
+{% endblock %}

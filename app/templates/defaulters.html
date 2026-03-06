@@ -1,0 +1,103 @@
+{% extends "layout.html" %}
+{% block title %}Defaulters Report{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Defaulters Report</h4>
+        <small class="text-muted">Students who haven't paid for Week {{ week }}, {{ year }}</small>
+    </div>
+    <a href="{{ url_for('reports.reports_home') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Back to Reports
+    </a>
+</div>
+
+<!-- Filter -->
+<div class="card stat-card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Week Number</label>
+                <input type="number" name="week" class="form-control" value="{{ week }}" min="1" max="53" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Year</label>
+                <input type="number" name="year" class="form-control" value="{{ year }}" required>
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-mt-green"><i class="bi bi-search"></i> Check Defaulters</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Total Active Students</div>
+                <div class="fw-bold fs-3">{{ total_active }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Students Paid</div>
+                <div class="fw-bold fs-3 text-success">{{ total_paid }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Defaulters</div>
+                <div class="fw-bold fs-3 text-danger">{{ defaulters|length }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Defaulters Table -->
+<div class="card stat-card">
+    <div class="card-header bg-white fw-semibold text-danger">
+        <i class="bi bi-exclamation-triangle"></i> Defaulters ({{ defaulters|length }})
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Student ID</th>
+                        <th>Full Name</th>
+                        <th>Class</th>
+                        <th>Guardian</th>
+                        <th>Phone</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in defaulters %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><code>{{ student.student_id }}</code></td>
+                        <td class="fw-semibold">{{ student.full_name }}</td>
+                        <td>{{ student.school_class.class_name if student.school_class else '-' }}</td>
+                        <td>{{ student.guardian_name or '-' }}</td>
+                        <td>{{ student.guardian_phone or '-' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-success py-4">
+                            <i class="bi bi-check-circle fs-4"></i><br>
+                            All students have paid for this week!
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MT-ISPMS{% endblock %} | Madrassatu Taqwa</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --mt-green: #1a5c2e;
+            --mt-green-light: #2d8a4e;
+            --mt-gold: #c5a028;
+            --mt-bg: #f4f7f5;
+        }
+        body { background-color: var(--mt-bg); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar { background: linear-gradient(135deg, var(--mt-green), var(--mt-green-light)) !important; }
+        .navbar-brand { font-weight: 700; letter-spacing: 1px; }
+        .sidebar {
+            min-height: calc(100vh - 56px);
+            background: #fff;
+            border-right: 1px solid #e0e0e0;
+            padding-top: 1rem;
+        }
+        .sidebar .nav-link {
+            color: #333;
+            padding: 0.6rem 1.2rem;
+            border-radius: 0.5rem;
+            margin: 0.15rem 0.5rem;
+            transition: all 0.2s;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background-color: var(--mt-green);
+            color: #fff !important;
+        }
+        .sidebar .nav-link i { margin-right: 0.5rem; width: 20px; text-align: center; }
+        .content-area { padding: 1.5rem; }
+        .stat-card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-card .stat-icon {
+            width: 50px; height: 50px;
+            border-radius: 0.75rem;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+        }
+        .bg-mt-green { background-color: var(--mt-green) !important; }
+        .text-mt-green { color: var(--mt-green) !important; }
+        .btn-mt-green {
+            background-color: var(--mt-green);
+            border-color: var(--mt-green);
+            color: #fff;
+        }
+        .btn-mt-green:hover {
+            background-color: var(--mt-green-light);
+            border-color: var(--mt-green-light);
+            color: #fff;
+        }
+        .badge-role {
+            font-size: 0.75rem;
+            padding: 0.35em 0.65em;
+        }
+        .table th { font-weight: 600; font-size: 0.85rem; text-transform: uppercase; color: #555; }
+        @media (max-width: 768px) {
+            .sidebar { min-height: auto; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">
+                <i class="bi bi-book"></i> MT-ISPMS
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    {% if current_user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> {{ current_user.full_name or current_user.username }}
+                            <span class="badge bg-light text-dark badge-role ms-1">{{ current_user.role.replace('_', ' ').title() }}</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}"><i class="bi bi-key"></i> Change Password</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            {% if current_user.is_authenticated %}
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar d-none d-md-block">
+                <nav class="nav flex-column">
+                    <a class="nav-link {% if request.endpoint == 'main.dashboard' %}active{% endif %}"
+                       href="{{ url_for('main.dashboard') }}">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+
+                    {% if current_user.is_super_admin %}
+                    <a class="nav-link {% if 'schools' in request.endpoint|default('') %}active{% endif %}"
+                       href="{{ url_for('schools.list_schools') }}">
+                        <i class="bi bi-building"></i> Schools
+                    </a>
+                    {% endif %}
+
+                    {% if current_user.role in ['super_admin', 'school_admin'] %}
+                    <a class="nav-link {% if request.endpoint == 'students.list_students' %}active{% endif %}"
+                       href="{{ url_for('students.list_students') }}">
+                        <i class="bi bi-people"></i> Students
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'students.list_classes' %}active{% endif %}"
+                       href="{{ url_for('students.list_classes') }}">
+                        <i class="bi bi-journal-text"></i> Classes
+                    </a>
+                    {% endif %}
+
+                    {% if current_user.role in ['super_admin', 'school_admin', 'collector'] %}
+                    <a class="nav-link {% if request.endpoint == 'payments.record_payment' %}active{% endif %}"
+                       href="{{ url_for('payments.record_payment') }}">
+                        <i class="bi bi-cash-coin"></i> Record Payment
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'payments.bulk_record' %}active{% endif %}"
+                       href="{{ url_for('payments.bulk_record') }}">
+                        <i class="bi bi-cash-stack"></i> Bulk Payment
+                    </a>
+                    {% endif %}
+
+                    {% if current_user.role in ['super_admin', 'school_admin', 'collector', 'accountant'] %}
+                    <a class="nav-link {% if request.endpoint == 'payments.list_payments' %}active{% endif %}"
+                       href="{{ url_for('payments.list_payments') }}">
+                        <i class="bi bi-list-check"></i> Payments
+                    </a>
+                    {% endif %}
+
+                    {% if current_user.role in ['super_admin', 'school_admin', 'accountant'] %}
+                    <a class="nav-link {% if 'reports' in request.endpoint|default('') %}active{% endif %}"
+                       href="{{ url_for('reports.reports_home') }}">
+                        <i class="bi bi-file-earmark-bar-graph"></i> Reports
+                    </a>
+                    <a class="nav-link {% if request.endpoint == 'reports.defaulters_report' %}active{% endif %}"
+                       href="{{ url_for('reports.defaulters_report') }}">
+                        <i class="bi bi-exclamation-triangle"></i> Defaulters
+                    </a>
+                    {% endif %}
+
+                    {% if current_user.role in ['super_admin', 'school_admin'] %}
+                    <a class="nav-link {% if request.endpoint == 'auth.list_users' %}active{% endif %}"
+                       href="{{ url_for('auth.list_users') }}">
+                        <i class="bi bi-person-gear"></i> Users
+                    </a>
+                    {% endif %}
+                </nav>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-10 content-area">
+            {% else %}
+            <div class="col-12 content-area">
+            {% endif %}
+
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="mb-3">
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Nav -->
+    {% if current_user.is_authenticated %}
+    <nav class="navbar fixed-bottom navbar-light bg-white border-top d-md-none">
+        <div class="container-fluid d-flex justify-content-around">
+            <a href="{{ url_for('main.dashboard') }}" class="text-center text-decoration-none text-mt-green">
+                <i class="bi bi-speedometer2 d-block"></i><small>Dashboard</small>
+            </a>
+            {% if current_user.role in ['super_admin', 'school_admin', 'collector'] %}
+            <a href="{{ url_for('payments.record_payment') }}" class="text-center text-decoration-none text-mt-green">
+                <i class="bi bi-cash-coin d-block"></i><small>Pay</small>
+            </a>
+            {% endif %}
+            {% if current_user.role in ['super_admin', 'school_admin'] %}
+            <a href="{{ url_for('students.list_students') }}" class="text-center text-decoration-none text-mt-green">
+                <i class="bi bi-people d-block"></i><small>Students</small>
+            </a>
+            {% endif %}
+            {% if current_user.role in ['super_admin', 'school_admin', 'accountant'] %}
+            <a href="{{ url_for('reports.reports_home') }}" class="text-center text-decoration-none text-mt-green">
+                <i class="bi bi-graph-up d-block"></i><small>Reports</small>
+            </a>
+            {% endif %}
+        </div>
+    </nav>
+    {% endif %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

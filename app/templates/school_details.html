@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+{% block title %}{{ school.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('schools.list_schools') }}" class="text-decoration-none"><i class="bi bi-arrow-left"></i> Back to Schools</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="bg-mt-green text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:80px;height:80px;font-size:2rem;">
+                    <i class="bi bi-building"></i>
+                </div>
+                <h5 class="fw-bold">{{ school.name }}</h5>
+                <p class="text-muted">{{ school.address or 'No address provided' }}</p>
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Students</span><strong>{{ student_count }}</strong>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Total Payments</span><strong>{{ payment_count }}</strong>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Created</span><strong>{{ school.created_at.strftime('%b %d, %Y') }}</strong>
+                </li>
+            </ul>
+            <div class="card-footer bg-white text-center">
+                <a href="{{ url_for('schools.edit_school', school_id=school.id) }}" class="btn btn-sm btn-outline-warning">
+                    <i class="bi bi-pencil"></i> Edit
+                </a>
+                <a href="{{ url_for('schools.assign_admin', school_id=school.id) }}" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-person-plus"></i> Assign Admin
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card stat-card">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-person-gear"></i> School Administrators
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for admin in admins %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td class="fw-semibold">{{ admin.username }}</td>
+                                <td>{{ admin.full_name }}</td>
+                                <td>
+                                    <span class="badge bg-{{ 'success' if admin.is_active else 'secondary' }}">
+                                        {{ 'Active' if admin.is_active else 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td>{{ admin.created_at.strftime('%b %d, %Y') }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">No admins assigned yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "layout.html" %}
+{% block title %}{{ student.full_name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('students.list_students') }}" class="text-decoration-none"><i class="bi bi-arrow-left"></i> Back to Students</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="bg-mt-green text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:80px;height:80px;font-size:2rem;">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <h5 class="fw-bold">{{ student.full_name }}</h5>
+                <p class="text-muted mb-1"><code>{{ student.student_id }}</code></p>
+                <span class="badge bg-{{ 'success' if student.status == 'active' else 'secondary' }}">{{ student.status|title }}</span>
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Gender</span><strong>{{ student.gender }}</strong>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Class</span><strong>{{ student.school_class.class_name if student.school_class else 'N/A' }}</strong>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Guardian</span><strong>{{ student.guardian_name or 'N/A' }}</strong>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Phone</span><strong>{{ student.guardian_phone or 'N/A' }}</strong>
+                </li>
+                <li class="list-group-item d-flex justify-content-between">
+                    <span class="text-muted">Enrolled</span><strong>{{ student.created_at.strftime('%b %d, %Y') }}</strong>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="col-md-8">
+        <div class="card stat-card">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-clock-history"></i> Payment History ({{ payments|length }} records)
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Week</th>
+                                <th>Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payment in payments %}
+                            <tr>
+                                <td>{{ loop.index }}</td>
+                                <td>{{ payment.payment_date.strftime('%b %d, %Y') }}</td>
+                                <td>GH&#8373;{{ "%.2f"|format(payment.amount) }}</td>
+                                <td>Week {{ payment.week_number }}</td>
+                                <td>
+                                    <a href="{{ url_for('payments.payment_receipt', payment_id=payment.id) }}">
+                                        {{ payment.receipt_number }}
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">No payments recorded.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

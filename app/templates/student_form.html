@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card stat-card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-person-plus"></i> {{ title }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">{{ form.student_id.label.text }}</label>
+                            {{ form.student_id(class="form-control", placeholder="e.g. STU-001") }}
+                            {% for error in form.student_id.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">{{ form.full_name.label.text }}</label>
+                            {{ form.full_name(class="form-control", placeholder="Student full name") }}
+                            {% for error in form.full_name.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">{{ form.gender.label.text }}</label>
+                            {{ form.gender(class="form-select") }}
+                            {% for error in form.gender.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">{{ form.class_id.label.text }}</label>
+                            {{ form.class_id(class="form-select") }}
+                            {% for error in form.class_id.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">{{ form.guardian_name.label.text }}</label>
+                            {{ form.guardian_name(class="form-control", placeholder="Guardian name") }}
+                            {% for error in form.guardian_name.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">{{ form.guardian_phone.label.text }}</label>
+                            {{ form.guardian_phone(class="form-control", placeholder="e.g. 0241234567") }}
+                            {% for error in form.guardian_phone.errors %}
+                            <div class="text-danger small">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        {{ form.submit(class="btn btn-mt-green") }}
+                        <a href="{{ url_for('students.list_students') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

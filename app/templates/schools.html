@@ -1,0 +1,59 @@
+{% extends "layout.html" %}
+{% block title %}Schools{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Schools</h4>
+        <small class="text-muted">Manage registered schools</small>
+    </div>
+    <a href="{{ url_for('schools.create_school') }}" class="btn btn-mt-green">
+        <i class="bi bi-building-add"></i> Add School
+    </a>
+</div>
+
+<div class="card stat-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>School Name</th>
+                        <th>Address</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for school in schools %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td class="fw-semibold">{{ school.name }}</td>
+                        <td>{{ school.address or '-' }}</td>
+                        <td>{{ school.created_at.strftime('%b %d, %Y') }}</td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('schools.school_details', school_id=school.id) }}" class="btn btn-outline-primary">
+                                    <i class="bi bi-eye"></i> View
+                                </a>
+                                <a href="{{ url_for('schools.edit_school', school_id=school.id) }}" class="btn btn-outline-warning">
+                                    <i class="bi bi-pencil"></i> Edit
+                                </a>
+                                <a href="{{ url_for('schools.assign_admin', school_id=school.id) }}" class="btn btn-outline-success">
+                                    <i class="bi bi-person-plus"></i> Assign Admin
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">No schools registered yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

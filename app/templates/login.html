@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow border-0" style="border-radius: 1rem;">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="bg-mt-green text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width:64px;height:64px;font-size:1.8rem;">
+                        <i class="bi bi-book"></i>
+                    </div>
+                    <h4 class="mt-3 fw-bold text-mt-green">MT-ISPMS</h4>
+                    <p class="text-muted small">Madrassatu Taqwa Integrated Student Payment Management System</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('auth.login') }}">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        <label for="username" class="form-label fw-semibold">Username</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-person"></i></span>
+                            {{ form.username(class="form-control", placeholder="Enter username", id="username") }}
+                        </div>
+                        {% for error in form.username.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label fw-semibold">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+                            {{ form.password(class="form-control", placeholder="Enter password", id="password") }}
+                        </div>
+                        {% for error in form.password.errors %}
+                        <div class="text-danger small mt-1">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-grid mt-4">
+                        {{ form.submit(class="btn btn-mt-green btn-lg") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+        <p class="text-center text-muted small mt-3">&copy; {{ now().year if now is defined else 2024 }} Madrassatu Taqwa. All rights reserved.</p>
+    </div>
+</div>
+{% endblock %}

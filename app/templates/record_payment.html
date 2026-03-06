@@ -1,0 +1,80 @@
+{% extends "layout.html" %}
+{% block title %}Record Payment{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card stat-card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-cash-coin"></i> Record Payment</h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('payments.record_payment') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="row g-3">
+                        <!-- Class filter for quick student selection -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Filter by Class</label>
+                            <select id="classFilter" class="form-select">
+                                <option value="">All Classes</option>
+                                {% for c in classes %}
+                                <option value="{{ c.id }}">{{ c.class_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Student <span class="text-danger">*</span></label>
+                            <select name="student_id" id="studentSelect" class="form-select" required>
+                                <option value="">-- Select Student --</option>
+                                {% for s in students %}
+                                <option value="{{ s.id }}" data-class="{{ s.class_id or '' }}">{{ s.full_name }} ({{ s.student_id }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Amount (GH&#8373;)</label>
+                            <input type="number" name="amount" class="form-control" value="{{ default_amount }}" step="0.01" min="0.01" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Payment Date</label>
+                            <input type="date" name="payment_date" class="form-control" value="{{ today }}" required>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="submit" class="btn btn-mt-green btn-lg">
+                            <i class="bi bi-check-circle"></i> Record Payment
+                        </button>
+                        <a href="{{ url_for('payments.list_payments') }}" class="btn btn-outline-secondary btn-lg ms-2">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Class filter for student dropdown
+document.getElementById('classFilter').addEventListener('change', function() {
+    const classId = this.value;
+    const studentSelect = document.getElementById('studentSelect');
+    const options = studentSelect.querySelectorAll('option');
+
+    options.forEach(option => {
+        if (!option.value) return; // Skip the placeholder
+        if (!classId || option.dataset.class === classId) {
+            option.style.display = '';
+        } else {
+            option.style.display = 'none';
+        }
+    });
+    studentSelect.value = '';
+});
+</script>
+{% endblock %}

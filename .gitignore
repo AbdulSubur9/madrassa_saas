@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.env
+
+# Instance folder
+instance/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Flask
+*.db
+
+# Receipts (generated files)
+app/static/receipts/*.pdf
+
+# Migrations (keep structure, ignore auto-generated)
+migrations/versions/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*

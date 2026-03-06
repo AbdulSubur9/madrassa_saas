@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+{% block title %}Receipt {{ payment.receipt_number }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card stat-card">
+            <div class="card-body text-center py-4">
+                <div class="bg-mt-green text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px;font-size:1.5rem;">
+                    <i class="bi bi-receipt-cutoff"></i>
+                </div>
+                <h4 class="fw-bold text-mt-green">Payment Receipt</h4>
+                <p class="text-muted">{{ school.name }}</p>
+                {% if school.address %}
+                <p class="text-muted small">{{ school.address }}</p>
+                {% endif %}
+            </div>
+
+            <hr class="my-0">
+
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="text-muted small">Receipt Number</div>
+                        <div class="fw-bold"><code>{{ payment.receipt_number }}</code></div>
+                    </div>
+                    <div class="col-6 text-end">
+                        <div class="text-muted small">Date</div>
+                        <div class="fw-bold">{{ payment.payment_date.strftime('%B %d, %Y') }}</div>
+                    </div>
+
+                    <div class="col-12"><hr></div>
+
+                    <div class="col-6">
+                        <div class="text-muted small">Student Name</div>
+                        <div class="fw-bold">{{ student.full_name }}</div>
+                    </div>
+                    <div class="col-6 text-end">
+                        <div class="text-muted small">Student ID</div>
+                        <div class="fw-bold"><code>{{ student.student_id }}</code></div>
+                    </div>
+
+                    <div class="col-12"><hr></div>
+
+                    <div class="col-4">
+                        <div class="text-muted small">Amount</div>
+                        <div class="fw-bold fs-4 text-mt-green">GH&#8373;{{ "%.2f"|format(payment.amount) }}</div>
+                    </div>
+                    <div class="col-4 text-center">
+                        <div class="text-muted small">Week</div>
+                        <div class="fw-bold">{{ payment.week_number }}</div>
+                    </div>
+                    <div class="col-4 text-end">
+                        <div class="text-muted small">Month / Year</div>
+                        <div class="fw-bold">{{ payment.month }} {{ payment.year }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-footer bg-white text-center">
+                <a href="{{ url_for('payments.download_receipt', payment_id=payment.id) }}" class="btn btn-mt-green">
+                    <i class="bi bi-file-pdf"></i> Download PDF
+                </a>
+                <a href="{{ url_for('payments.record_payment') }}" class="btn btn-outline-secondary ms-2">
+                    <i class="bi bi-plus-circle"></i> New Payment
+                </a>
+                <button onclick="window.print()" class="btn btn-outline-primary ms-2">
+                    <i class="bi bi-printer"></i> Print
+                </button>
+            </div>
+        </div>
+
+        <p class="text-center text-muted small mt-3">This is a computer-generated receipt. No signature required.</p>
+    </div>
+</div>
+{% endblock %}

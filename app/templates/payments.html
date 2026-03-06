@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+{% block title %}Payments{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Payments</h4>
+        <small class="text-muted">Payment records</small>
+    </div>
+    {% if current_user.role in ['super_admin', 'school_admin', 'collector'] %}
+    <div>
+        <a href="{{ url_for('payments.record_payment') }}" class="btn btn-mt-green">
+            <i class="bi bi-plus-circle"></i> Record Payment
+        </a>
+        <a href="{{ url_for('payments.bulk_record') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-cash-stack"></i> Bulk Payment
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Filters -->
+<div class="card stat-card mb-4">
+    <div class="card-body">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">Date</label>
+                <input type="date" name="date" class="form-control" value="{{ date_filter }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small fw-semibold">Week Number</label>
+                <input type="number" name="week" class="form-control" placeholder="e.g. 10" value="{{ week_filter or '' }}" min="1" max="53">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-mt-green"><i class="bi bi-funnel"></i> Filter</button>
+                <a href="{{ url_for('payments.list_payments') }}" class="btn btn-outline-secondary">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Payments Table -->
+<div class="card stat-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Receipt</th>
+                        <th>Student</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Week</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment in payments.items %}
+                    <tr>
+                        <td>{{ loop.index + (payments.page - 1) * payments.per_page }}</td>
+                        <td><code>{{ payment.receipt_number }}</code></td>
+                        <td class="fw-semibold">{{ payment.student.full_name }}</td>
+                        <td>GH&#8373;{{ "%.2f"|format(payment.amount) }}</td>
+                        <td>{{ payment.payment_date.strftime('%b %d, %Y') }}</td>
+                        <td>Week {{ payment.week_number }}</td>
+                        <td>
+                            <a href="{{ url_for('payments.payment_receipt', payment_id=payment.id) }}" class="btn btn-sm btn-outline-primary" title="View Receipt">
+                                <i class="bi bi-receipt"></i>
+                            </a>
+                            <a href="{{ url_for('payments.download_receipt', payment_id=payment.id) }}" class="btn btn-sm btn-outline-success" title="Download PDF">
+                                <i class="bi bi-file-pdf"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">No payments found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if payments.pages > 1 %}
+    <div class="card-footer bg-white">
+        <nav>
+            <ul class="pagination pagination-sm justify-content-center mb-0">
+                {% if payments.has_prev %}
+                <li class="page-item"><a class="page-link" href="{{ url_for('payments.list_payments', page=payments.prev_num, date=date_filter, week=week_filter) }}">Previous</a></li>
+                {% endif %}
+                {% for p in payments.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if p %}
+                <li class="page-item {% if p == payments.page %}active{% endif %}"><a class="page-link" href="{{ url_for('payments.list_payments', page=p, date=date_filter, week=week_filter) }}">{{ p }}</a></li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+                {% endfor %}
+                {% if payments.has_next %}
+                <li class="page-item"><a class="page-link" href="{{ url_for('payments.list_payments', page=payments.next_num, date=date_filter, week=week_filter) }}">Next</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,226 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Dashboard</h4>
+        <small class="text-muted">{{ school.name if school else 'School Overview' }} &mdash; Week {{ current_week }}</small>
+    </div>
+    {% if current_user.role in ['super_admin', 'school_admin', 'collector'] %}
+    <a href="{{ url_for('payments.record_payment') }}" class="btn btn-mt-green">
+        <i class="bi bi-plus-circle"></i> Record Payment
+    </a>
+    {% endif %}
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary me-3">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Total Students</div>
+                    <div class="fw-bold fs-4">{{ total_students }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-success bg-opacity-10 text-success me-3">
+                    <i class="bi bi-cash-coin"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Today's Revenue</div>
+                    <div class="fw-bold fs-4">GH&#8373;{{ "%.2f"|format(today_revenue) }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-info bg-opacity-10 text-info me-3">
+                    <i class="bi bi-calendar-week"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Weekly Revenue</div>
+                    <div class="fw-bold fs-4">GH&#8373;{{ "%.2f"|format(weekly_revenue) }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100">
+            <div class="card-body d-flex align-items-center">
+                <div class="stat-icon bg-warning bg-opacity-10 text-warning me-3">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+                <div>
+                    <div class="text-muted small">Defaulters</div>
+                    <div class="fw-bold fs-4">{{ defaulters_count }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Revenue Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Monthly Revenue</div>
+                <div class="fw-bold fs-3 text-mt-green">GH&#8373;{{ "%.2f"|format(monthly_revenue) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Yearly Revenue</div>
+                <div class="fw-bold fs-3 text-mt-green">GH&#8373;{{ "%.2f"|format(yearly_revenue) }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-body text-center">
+                <div class="text-muted small">Payments Today</div>
+                <div class="fw-bold fs-3 text-mt-green">{{ total_payments_today }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card stat-card">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-bar-chart"></i> Weekly Payment Trends
+            </div>
+            <div class="card-body">
+                <canvas id="weeklyChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card stat-card">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-graph-up"></i> Monthly Revenue Trends
+            </div>
+            <div class="card-body">
+                <canvas id="monthlyChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Payments -->
+<div class="card stat-card">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span class="fw-semibold"><i class="bi bi-clock-history"></i> Recent Payments</span>
+        <a href="{{ url_for('payments.list_payments') }}" class="btn btn-sm btn-outline-secondary">View All</a>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Student</th>
+                        <th>Amount</th>
+                        <th>Date</th>
+                        <th>Receipt</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for payment, student in recent_payments %}
+                    <tr>
+                        <td>{{ student.full_name }}</td>
+                        <td>GH&#8373;{{ "%.2f"|format(payment.amount) }}</td>
+                        <td>{{ payment.payment_date.strftime('%b %d, %Y') }}</td>
+                        <td>
+                            <a href="{{ url_for('payments.payment_receipt', payment_id=payment.id) }}" class="text-decoration-none">
+                                {{ payment.receipt_number }}
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">No payments recorded yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Fetch weekly chart data
+fetch('{{ url_for("main.chart_weekly") }}')
+    .then(r => r.json())
+    .then(data => {
+        new Chart(document.getElementById('weeklyChart'), {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Revenue (GH\u20b5)',
+                    data: data.amounts,
+                    backgroundColor: 'rgba(26, 92, 46, 0.7)',
+                    borderColor: '#1a5c2e',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { callback: v => 'GH\u20b5' + v } }
+                }
+            }
+        });
+    });
+
+// Fetch monthly chart data
+fetch('{{ url_for("main.chart_monthly") }}')
+    .then(r => r.json())
+    .then(data => {
+        new Chart(document.getElementById('monthlyChart'), {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Revenue (GH\u20b5)',
+                    data: data.amounts,
+                    borderColor: '#1a5c2e',
+                    backgroundColor: 'rgba(26, 92, 46, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#1a5c2e',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, ticks: { callback: v => 'GH\u20b5' + v } }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}
