@@ -41,3 +41,7 @@ migrations/versions/
 htmlcov/
 .coverage
 .coverage.*
+
+#ignore local SQLite database
+madrassa.db
+instance/
