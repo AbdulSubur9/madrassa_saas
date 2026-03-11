@@ -295,7 +295,7 @@ def import_students():
             required_cols = ['first_name', 'last_name', 'gender', 'dob', 'guardian_name', 'contact']
             missing_cols = [col for col in required_cols if col not in df.columns]
             if missing_cols:
-                flash(f'Missing required columns: {', '.join(missing_cols)}', 'danger')
+                flash(f'Missing required columns: {", ".join(missing_cols)}', 'danger')
                 return redirect(request.url)
 
             imported_count = 0
