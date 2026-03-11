@@ -34,8 +34,8 @@ Thumbs.db
 # Receipts (generated files)
 app/static/receipts/*.pdf
 
-# Migrations (keep structure, ignore auto-generated)
-migrations/versions/
+# Migrations (keep structure, keep auto-generated versions)
+# migrations/versions/
 
 # Coverage
 htmlcov/
