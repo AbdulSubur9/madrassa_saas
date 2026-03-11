@@ -1,13 +1,20 @@
 """Student management routes."""
 
+import os
+import uuid
+from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename
+import pandas as pd
 from app.extensions import db
 from app.models import Student, SchoolClass, AuditLog
 from app.students.forms import StudentForm, ClassForm
 from app.utils import role_required
 
 students_bp = Blueprint('students', __name__, template_folder='../templates')
+
+ALLOWED_EXTENSIONS = {'xlsx', 'csv'}
 
 
 @students_bp.route('/')
@@ -250,3 +257,130 @@ def delete_class(class_id):
 
     flash(f'Class "{class_name}" deleted successfully.', 'success')
     return redirect(url_for('students.list_classes'))
+
+
+def allowed_file(filename):
+    """Check if file extension is allowed."""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+@students_bp.route('/import', methods=['GET', 'POST'])
+@login_required
+@role_required('super_admin', 'school_admin')
+def import_students():
+    """Import students from Excel or CSV file."""
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('No file selected.', 'danger')
+            return redirect(request.url)
+
+        file = request.files['file']
+        if file.filename == '':
+            flash('No file selected.', 'danger')
+            return redirect(request.url)
+
+        if not allowed_file(file.filename):
+            flash('Invalid file format. Please upload .xlsx or .csv files.', 'danger')
+            return redirect(request.url)
+
+        try:
+            # Read the file
+            filename = secure_filename(file.filename)
+            if filename.endswith('.csv'):
+                df = pd.read_csv(file)
+            else:
+                df = pd.read_excel(file)
+
+            # Required columns
+            required_cols = ['first_name', 'last_name', 'gender', 'dob', 'guardian_name', 'contact']
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            if missing_cols:
+                flash(f'Missing required columns: {', '.join(missing_cols)}', 'danger')
+                return redirect(request.url)
+
+            imported_count = 0
+            skipped_rows = []
+
+            # Process each row
+            for idx, row in df.iterrows():
+                # Skip rows with missing names
+                first_name = str(row.get('first_name', '')).strip()
+                last_name = str(row.get('last_name', '')).strip()
+                
+                if not first_name or not last_name or first_name.lower() == 'nan' or last_name.lower() == 'nan':
+                    skipped_rows.append({'row': idx + 2, 'reason': 'Missing first_name or last_name'})
+                    continue
+
+                full_name = f"{first_name} {last_name}"
+                gender = str(row.get('gender', '')).strip().lower()
+                dob = row.get('dob', '')
+                guardian_name = str(row.get('guardian_name', '')).strip()
+                contact = str(row.get('contact', '')).strip()
+
+                # Generate student ID if not provided
+                student_id = str(row.get('student_id', '')).strip()
+                if not student_id or student_id.lower() == 'nan':
+                    student_id = f"STU-{uuid.uuid4().hex[:8].upper()}"
+
+                # Check for duplicate within the school
+                existing = Student.query.filter_by(
+                    school_id=current_user.school_id,
+                    student_id=student_id
+                ).first()
+
+                if existing:
+                    skipped_rows.append({'row': idx + 2, 'reason': f'Duplicate student_id: {student_id}'})
+                    continue
+
+                # Parse date of birth
+                parsed_dob = None
+                if dob:
+                    try:
+                        if isinstance(dob, str):
+                            parsed_dob = datetime.strptime(dob, '%Y-%m-%d').date()
+                        else:
+                            parsed_dob = dob.date()
+                    except:
+                        pass
+
+                # Create student
+                student = Student(
+                    school_id=current_user.school_id,
+                    student_id=student_id,
+                    full_name=full_name,
+                    gender=gender.capitalize() if gender in ['male', 'female'] else gender,
+                    guardian_name=guardian_name if guardian_name and guardian_name.lower() != 'nan' else None,
+                    guardian_phone=contact if contact and contact.lower() != 'nan' else None,
+                    status='active'
+                )
+                db.session.add(student)
+                imported_count += 1
+
+            db.session.commit()
+
+            # Audit log
+            audit = AuditLog(
+                user_id=current_user.id,
+                action=f'Imported {imported_count} students from Excel/CSV'
+            )
+            db.session.add(audit)
+            db.session.commit()
+
+            flash(f'Successfully imported {imported_count} students.', 'success')
+            
+            # Show summary if there were skipped rows
+            if skipped_rows:
+                flash(f'Skipped {len(skipped_rows)} rows. See details below.', 'warning')
+                return render_template('import_result.html', 
+                                       imported=imported_count, 
+                                       skipped=len(skipped_rows), 
+                                       skipped_rows=skipped_rows[:50])  # Limit to 50 for display
+
+            return redirect(url_for('students.list_students'))
+
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error processing file: {str(e)}', 'danger')
+            return redirect(request.url)
+
+    return render_template('import_students.html')

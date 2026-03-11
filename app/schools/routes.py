@@ -131,6 +131,21 @@ def assign_admin(school_id):
     return render_template('assign_admin.html', school=school)
 
 
+@schools_bp.route('/deactivate_school/<int:school_id>', methods=['POST'])
+@role_required('super_admin')
+def deactivate_school(school_id):
+
+    school = School.query.get_or_404(school_id)
+
+    school.is_active = False
+
+    db.session.commit()
+
+    flash("School has been deactivated", "warning")
+
+    return redirect(url_for('schools.list_schools'))
+    
+
 @schools_bp.route('/<int:school_id>/details')
 @login_required
 @role_required('super_admin')
@@ -147,3 +162,39 @@ def school_details(school_id):
 
     return render_template('school_details.html', school=school, admins=admins,
                            student_count=student_count, payment_count=payment_count)
+
+
+@schools_bp.route('/settings', methods=['GET', 'POST'])
+@login_required
+@role_required('school_admin')
+def school_settings():
+    """School Admin settings page - configure school-specific settings."""
+    school = db.session.get(School, current_user.school_id)
+    if not school:
+        flash('School not found.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    if request.method == 'POST':
+        week_start_date_str = request.form.get('week_start_date', '').strip()
+        
+        if week_start_date_str:
+            try:
+                from datetime import datetime
+                school.week_start_date = datetime.strptime(week_start_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                flash('Invalid date format. Please use YYYY-MM-DD.', 'danger')
+                return render_template('school_settings.html', school=school)
+        else:
+            school.week_start_date = None
+
+        audit = AuditLog(
+            user_id=current_user.id,
+            action=f'Updated school settings: week_start_date = {school.week_start_date}'
+        )
+        db.session.add(audit)
+        db.session.commit()
+
+        flash('School settings updated successfully.', 'success')
+        return redirect(url_for('schools.school_settings'))
+
+    return render_template('school_settings.html', school=school)

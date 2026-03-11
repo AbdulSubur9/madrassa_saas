@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+{% block title %}Import Students{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Import Students</h4>
+        <small class="text-muted">Bulk import students from Excel or CSV file</small>
+    </div>
+    <a href="{{ url_for('students.list_students') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Students
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card stat-card">
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Upload File</label>
+                        <div class="border border-2 border-dashed rounded p-4 text-center" id="drop-zone">
+                            <i class="bi bi-cloud-upload fs-1 text-muted"></i>
+                            <p class="mb-2">Drag and drop your file here, or click to browse</p>
+                            <input type="file" name="file" id="file" class="form-control" accept=".xlsx,.csv" required>
+                            <small class="text-muted">Supported formats: .xlsx, .csv</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <button type="submit" class="btn btn-mt-green">
+                            <i class="bi bi-upload"></i> Import Students
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card stat-card">
+            <div class="card-header bg-light">
+                <h6 class="mb-0 fw-semibold">Required Columns</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><code>first_name</code> <span class="text-danger">*</span></li>
+                    <li class="mb-2"><code>last_name</code> <span class="text-danger">*</span></li>
+                    <li class="mb-2"><code>gender</code> <span class="text-danger">*</span></li>
+                    <li class="mb-2"><code>dob</code> <span class="text-danger">*</span></li>
+                    <li class="mb-2"><code>guardian_name</code> <span class="text-danger">*</span></li>
+                    <li class="mb-2"><code>contact</code> <span class="text-danger">*</span></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card stat-card mt-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0 fw-semibold">Optional Columns</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><code>student_id</code></li>
+                    <li class="mb-0"><code>class_name</code></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="card stat-card mt-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0 fw-semibold">Notes</h6>
+            </div>
+            <div class="card-body">
+                <small class="text-muted">
+                    <ul class="mb-0">
+                        <li>Rows with missing names will be skipped</li>
+                        <li>Duplicate student IDs will be skipped</li>
+                        <li>Students will be linked to your school</li>
+                        <li>Date format: YYYY-MM-DD</li>
+                    </ul>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

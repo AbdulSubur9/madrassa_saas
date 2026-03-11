@@ -119,26 +119,44 @@
                     </a>
                     {% endif %}
 
+                    <!-- Students Dropdown -->
                     {% if current_user.role in ['super_admin', 'school_admin'] %}
-                    <a class="nav-link {% if request.endpoint == 'students.list_students' %}active{% endif %}"
-                       href="{{ url_for('students.list_students') }}">
-                        <i class="bi bi-people"></i> Students
-                    </a>
-                    <a class="nav-link {% if request.endpoint == 'students.list_classes' %}active{% endif %}"
-                       href="{{ url_for('students.list_classes') }}">
-                        <i class="bi bi-journal-text"></i> Classes
-                    </a>
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-people"></i> Students
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('students.list_students') }}">
+                                <i class="bi bi-list-ul"></i> View Students
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('students.add_student') }}">
+                                <i class="bi bi-person-plus"></i> Add Student
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('students.import_students') }}">
+                                <i class="bi bi-upload"></i> Import Students
+                            </a></li>
+                        </ul>
+                    </div>
                     {% endif %}
 
+                    <!-- Payments Dropdown -->
                     {% if current_user.role in ['super_admin', 'school_admin', 'collector'] %}
-                    <a class="nav-link {% if request.endpoint == 'payments.record_payment' %}active{% endif %}"
-                       href="{{ url_for('payments.record_payment') }}">
-                        <i class="bi bi-cash-coin"></i> Record Payment
-                    </a>
-                    <a class="nav-link {% if request.endpoint == 'payments.bulk_record' %}active{% endif %}"
-                       href="{{ url_for('payments.bulk_record') }}">
-                        <i class="bi bi-cash-stack"></i> Bulk Payment
-                    </a>
+                    <div class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-cash-coin"></i> Payments
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('payments.record_payment') }}">
+                                <i class="bi bi-plus-circle"></i> Record Payment
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('payments.bulk_record') }}">
+                                <i class="bi bi-cash-stack"></i> Bulk Payment
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('payments.list_payments') }}">
+                                <i class="bi bi-list-check"></i> Payment History
+                            </a></li>
+                        </ul>
+                    </div>
                     {% endif %}
 
                     {% if current_user.role in ['super_admin', 'school_admin', 'collector', 'accountant'] %}
@@ -163,6 +181,13 @@
                     <a class="nav-link {% if request.endpoint == 'auth.list_users' %}active{% endif %}"
                        href="{{ url_for('auth.list_users') }}">
                         <i class="bi bi-person-gear"></i> Users
+                    </a>
+                    {% endif %}
+
+                    {% if current_user.role == 'school_admin' %}
+                    <a class="nav-link {% if request.endpoint == 'schools.school_settings' %}active{% endif %}"
+                       href="{{ url_for('schools.school_settings') }}">
+                        <i class="bi bi-gear"></i> Settings
                     </a>
                     {% endif %}
                 </nav>

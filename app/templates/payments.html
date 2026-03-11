@@ -52,12 +52,13 @@
                         <th>Amount</th>
                         <th>Date</th>
                         <th>Week</th>
+                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for payment in payments.items %}
-                    <tr>
+                    <tr class="{{ 'table-danger' if payment.status == 'void' else '' }}">
                         <td>{{ loop.index + (payments.page - 1) * payments.per_page }}</td>
                         <td><code>{{ payment.receipt_number }}</code></td>
                         <td class="fw-semibold">{{ payment.student.full_name }}</td>
@@ -65,17 +66,31 @@
                         <td>{{ payment.payment_date.strftime('%b %d, %Y') }}</td>
                         <td>Week {{ payment.week_number }}</td>
                         <td>
-                            <a href="{{ url_for('payments.payment_receipt', payment_id=payment.id) }}" class="btn btn-sm btn-outline-primary" title="View Receipt">
-                                <i class="bi bi-receipt"></i>
-                            </a>
-                            <a href="{{ url_for('payments.download_receipt', payment_id=payment.id) }}" class="btn btn-sm btn-outline-success" title="Download PDF">
-                                <i class="bi bi-file-pdf"></i>
-                            </a>
+                            {% if payment.status == 'void' %}
+                            <span class="badge bg-danger">VOID</span>
+                            {% else %}
+                            <span class="badge bg-success">Completed</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('payments.payment_receipt', payment_id=payment.id) }}" class="btn btn-outline-primary" title="View Receipt">
+                                    <i class="bi bi-receipt"></i>
+                                </a>
+                                <a href="{{ url_for('payments.download_receipt', payment_id=payment.id) }}" class="btn btn-outline-success" title="Download PDF">
+                                    <i class="bi bi-file-pdf"></i>
+                                </a>
+                                {% if payment.status != 'void' and current_user.role in ['super_admin', 'school_admin'] %}
+                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#voidModal{{ payment.id }}" title="Void Payment">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">No payments found.</td>
+                        <td colspan="8" class="text-center text-muted py-4">No payments found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -105,4 +120,39 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Void Confirmation Modals -->
+{% for payment in payments.items %}
+{% if payment.status != 'void' and current_user.role in ['super_admin', 'school_admin'] %}
+<div class="modal fade" id="voidModal{{ payment.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Void Payment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to void this payment?</p>
+                <table class="table table-sm">
+                    <tr><td><strong>Receipt:</strong></td><td>{{ payment.receipt_number }}</td></tr>
+                    <tr><td><strong>Student:</strong></td><td>{{ payment.student.full_name }}</td></tr>
+                    <tr><td><strong>Amount:</strong></td><td>GH&#8373;{{ "%.2f"|format(payment.amount) }}</td></tr>
+                    <tr><td><strong>Date:</strong></td><td>{{ payment.payment_date.strftime('%B %d, %Y') }}</td></tr>
+                </table>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> This action cannot be undone. The payment record will be marked as void.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('payments.void_payment', payment_id=payment.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Void Payment</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endfor %}
 {% endblock %}

@@ -73,7 +73,7 @@ def record_payment():
         else:
             pay_date = date.today()
 
-        week_num = get_week_number(pay_date)
+        week_num = get_week_number(pay_date, school)
         year = pay_date.year
         month = pay_date.strftime('%B')
 
@@ -166,7 +166,9 @@ def bulk_record():
         else:
             pay_date = date.today()
 
-        week_num = get_week_number(pay_date)
+        school = db.session.get(School, current_user.school_id)
+
+        week_num = get_week_number(pay_date, school)
         year = pay_date.year
         month = pay_date.strftime('%B')
         school = db.session.get(School, current_user.school_id)
@@ -227,6 +229,34 @@ def bulk_record():
 
     return render_template('bulk_payment.html', classes=classes,
                            default_amount=5.0, today=date.today().strftime('%Y-%m-%d'))
+
+
+@payments_bp.route('/search-students')
+@login_required
+@role_required('super_admin', 'school_admin', 'collector')
+def search_students():
+    """API endpoint to search students by name or ID (for AJAX)."""
+    from flask import jsonify
+    query = request.args.get('q', '').strip()
+    
+    if not query or len(query) < 2:
+        return jsonify([])
+    
+    students = Student.query.filter(
+        Student.school_id == current_user.school_id,
+        Student.status == 'active',
+        db.or_(
+            Student.full_name.ilike(f'%{query}%'),
+            Student.student_id.ilike(f'%{query}%')
+        )
+    ).order_by(Student.full_name).limit(20).all()
+
+    return jsonify([{
+        'id': s.id,
+        'student_id': s.student_id,
+        'full_name': s.full_name,
+        'class_name': s.school_class.class_name if s.school_class else 'N/A'
+    } for s in students])
 
 
 @payments_bp.route('/get-students/<int:class_id>')
@@ -294,3 +324,37 @@ def download_receipt(payment_id):
 
     return send_file(filepath, as_attachment=True,
                      download_name=f'receipt_{payment.receipt_number}.pdf')
+
+
+@payments_bp.route('/<int:payment_id>/void', methods=['POST'])
+@login_required
+@role_required('super_admin', 'school_admin')
+def void_payment(payment_id):
+    """Void a payment (mark as cancelled without deleting)."""
+    payment = db.session.get(Payment, payment_id)
+    if not payment:
+        flash('Payment not found.', 'danger')
+        return redirect(url_for('payments.list_payments'))
+
+    # School isolation: School admins can only void their own school's payments
+    if current_user.is_school_admin and payment.school_id != current_user.school_id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('payments.list_payments'))
+
+    # Check if payment is already void
+    if payment.status == Payment.STATUS_VOID:
+        flash('Payment is already voided.', 'warning')
+        return redirect(url_for('payments.list_payments'))
+
+    # Void the payment
+    payment.status = Payment.STATUS_VOID
+
+    audit = AuditLog(
+        user_id=current_user.id,
+        action=f'Voided payment: {payment.receipt_number} for {payment.student.full_name}'
+    )
+    db.session.add(audit)
+    db.session.commit()
+
+    flash(f'Payment {payment.receipt_number} has been voided.', 'success')
+    return redirect(url_for('payments.list_payments'))
