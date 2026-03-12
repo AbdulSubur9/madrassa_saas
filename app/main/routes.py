@@ -61,8 +61,9 @@ def _super_admin_dashboard():
 def _school_dashboard():
     """Dashboard for school-level users."""
     school_id = current_user.school_id
+    school = db.session.get(School, school_id)
     today = date.today()
-    current_week = get_week_number(today)
+    current_week = get_week_number(today, school)
     current_year = today.year
     current_month = today.strftime('%B')
 
@@ -122,8 +123,6 @@ def _school_dashboard():
     ).filter(
         Payment.school_id == school_id
     ).order_by(Payment.created_at.desc()).limit(10).all()
-
-    school = db.session.get(School, school_id)
 
     return render_template('dashboard.html',
                            school=school,

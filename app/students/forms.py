@@ -9,7 +9,7 @@ class StudentForm(FlaskForm):
     """Form for creating/editing a student."""
 
     student_id = StringField('Student ID', validators=[
-        DataRequired(),
+        Optional(),
         Length(min=1, max=50)
     ])
     full_name = StringField('Full Name', validators=[

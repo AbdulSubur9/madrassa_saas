@@ -145,10 +145,15 @@ def add_student():
     form.class_id.choices = [(0, '-- Select Class --')] + [(c.id, c.class_name) for c in classes]
 
     if form.validate_on_submit():
+        # Generate student ID if not provided
+        student_id = form.student_id.data.strip() if form.student_id.data else ''
+        if not student_id:
+            student_id = generate_student_id(current_user.school_id)
+        
         # Check for duplicate student ID within the school
         existing = Student.query.filter_by(
             school_id=current_user.school_id,
-            student_id=form.student_id.data
+            student_id=student_id
         ).first()
         if existing:
             flash('A student with this ID already exists in your school.', 'danger')
@@ -156,7 +161,7 @@ def add_student():
 
         student = Student(
             school_id=current_user.school_id,
-            student_id=form.student_id.data.strip(),
+            student_id=student_id,
             full_name=form.full_name.data.strip(),
             gender=form.gender.data,
             class_id=form.class_id.data if form.class_id.data != 0 else None,

@@ -5,7 +5,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-0">Dashboard</h4>
-        <small class="text-muted">{{ school.name if school else 'School Overview' }} &mdash; Week {{ current_week }}</small>
+        <small class="text-muted">{{ school.name if school else 'School Overview' }} &mdash; Week {{ current_week }}{% if school and school.week_start_date %} (Start: {{ school.week_start_date.strftime('%Y-%m-%d') }}){% endif %}</small>
     </div>
     {% if current_user.role in ['super_admin', 'school_admin', 'collector'] %}
     <a href="{{ url_for('payments.record_payment') }}" class="btn btn-mt-green">
