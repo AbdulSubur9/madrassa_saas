@@ -358,3 +358,37 @@ def void_payment(payment_id):
 
     flash(f'Payment {payment.receipt_number} has been voided.', 'success')
     return redirect(url_for('payments.list_payments'))
+
+
+@payments_bp.route('/unvoid/<int:payment_id>')
+@login_required
+@role_required('super_admin', 'school_admin')
+def unvoid_payment(payment_id):
+    """Unvoid a payment (restore a voided payment)."""
+    payment = db.session.get(Payment, payment_id)
+    if not payment:
+        flash('Payment not found.', 'danger')
+        return redirect(url_for('payments.list_payments'))
+
+    # School isolation: School admins can only unvoid their own school's payments
+    if current_user.is_school_admin and payment.school_id != current_user.school_id:
+        flash('Access denied.', 'danger')
+        return redirect(url_for('payments.list_payments'))
+
+    # Check if payment is void
+    if payment.status != Payment.STATUS_VOID:
+        flash('Payment is not voided.', 'warning')
+        return redirect(url_for('payments.list_payments'))
+
+    # Unvoid the payment
+    payment.status = Payment.STATUS_COMPLETED
+
+    audit = AuditLog(
+        user_id=current_user.id,
+        action=f'Unvoided payment: {payment.receipt_number} for {payment.student.full_name}'
+    )
+    db.session.add(audit)
+    db.session.commit()
+
+    flash(f'Payment {payment.receipt_number} has been restored.', 'success')
+    return redirect(url_for('payments.list_payments'))
