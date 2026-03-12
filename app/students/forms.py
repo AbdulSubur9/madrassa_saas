@@ -1,7 +1,7 @@
 """Student management forms."""
 
 from flask_wtf import FlaskForm
-from wtforms import StringField, SelectField, SubmitField
+from wtforms import StringField, SelectField, SubmitField, FileField
 from wtforms.validators import DataRequired, Length, Optional
 
 
@@ -40,3 +40,10 @@ class ClassForm(FlaskForm):
         Length(min=1, max=100)
     ])
     submit = SubmitField('Create Class')
+
+
+class ImportForm(FlaskForm):
+    """Form for importing students from file."""
+
+    file = FileField('File', validators=[DataRequired()])
+    submit = SubmitField('Import Students')

@@ -9,7 +9,7 @@ from werkzeug.utils import secure_filename
 import pandas as pd
 from app.extensions import db
 from app.models import Student, SchoolClass, AuditLog
-from app.students.forms import StudentForm, ClassForm
+from app.students.forms import StudentForm, ClassForm, ImportForm
 from app.utils import role_required
 
 students_bp = Blueprint('students', __name__, template_folder='../templates')
@@ -269,12 +269,9 @@ def allowed_file(filename):
 @role_required('super_admin', 'school_admin')
 def import_students():
     """Import students from Excel or CSV file."""
-    if request.method == 'POST':
-        if 'file' not in request.files:
-            flash('No file selected.', 'danger')
-            return redirect(request.url)
-
-        file = request.files['file']
+    form = ImportForm()
+    if form.validate_on_submit():
+        file = form.file.data
         if file.filename == '':
             flash('No file selected.', 'danger')
             return redirect(request.url)
@@ -383,4 +380,4 @@ def import_students():
             flash(f'Error processing file: {str(e)}', 'danger')
             return redirect(request.url)
 
-    return render_template('import_students.html')
+    return render_template('import_students.html', form=form)
