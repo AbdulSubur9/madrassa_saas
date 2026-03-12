@@ -49,7 +49,6 @@
                     <li class="mb-2"><code>first_name</code> <span class="text-danger">*</span></li>
                     <li class="mb-2"><code>last_name</code> <span class="text-danger">*</span></li>
                     <li class="mb-2"><code>gender</code> <span class="text-danger">*</span></li>
-                    <li class="mb-2"><code>dob</code> <span class="text-danger">*</span></li>
                     <li class="mb-2"><code>guardian_name</code> <span class="text-danger">*</span></li>
                     <li class="mb-2"><code>contact</code> <span class="text-danger">*</span></li>
                 </ul>
@@ -63,6 +62,7 @@
             <div class="card-body">
                 <ul class="list-unstyled mb-0">
                     <li class="mb-2"><code>student_id</code></li>
+                    <li class="mb-2"><code>dob</code></li>
                     <li class="mb-0"><code>class_name</code></li>
                 </ul>
             </div>
@@ -75,9 +75,10 @@
             <div class="card-body">
                 <small class="text-muted">
                     <ul class="mb-0">
-                        <li>Rows with missing names will be skipped</li>
+                        <li>Rows with missing required fields will be skipped</li>
+                        <li>Gender must be 'Male' or 'Female'</li>
                         <li>Duplicate student IDs will be skipped</li>
-                        <li>Students will be linked to your school</li>
+                        <li>New students get ID: TAQWA-YYYY-NNNN (e.g., TAQWA-2026-0001)</li>
                         <li>Date format: YYYY-MM-DD</li>
                     </ul>
                 </small>

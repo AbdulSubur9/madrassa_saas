@@ -17,6 +17,88 @@ students_bp = Blueprint('students', __name__, template_folder='../templates')
 ALLOWED_EXTENSIONS = {'xlsx', 'csv'}
 
 
+def generate_student_id(school_id, year=None):
+    """
+    Generate a unique student ID in the format TAQWA-{year}-{number}.
+    
+    Args:
+        school_id: The ID of the school
+        year: The academic year (defaults to current year)
+    
+    Returns:
+        A unique student ID string
+    """
+    if year is None:
+        year = datetime.now().year
+    
+    # Query for existing TAQWA IDs for this school and year
+    prefix = f'TAQWA-{year}-'
+    existing_ids = Student.query.filter(
+        Student.school_id == school_id,
+        Student.student_id.like(f'{prefix}%')
+    ).all()
+    
+    # Find the highest number
+    max_num = 0
+    for student in existing_ids:
+        try:
+            # Extract the number after TAQWA-YYYY-
+            num_part = student.student_id.replace(prefix, '')
+            num = int(num_part)
+            if num > max_num:
+                max_num = num
+        except (ValueError, AttributeError):
+            continue
+    
+    # Generate the next ID
+    new_num = max_num + 1
+    return f'{prefix}{new_num:04d}'
+
+
+def validate_student_data(row, idx):
+    """
+    Validate a single row of student data.
+    
+    Args:
+        row: A pandas Series row from the Excel file
+        idx: The row index (for error reporting)
+    
+    Returns:
+        A tuple (is_valid, error_message)
+    """
+    # Validate required fields
+    first_name = str(row.get('first_name', '')).strip()
+    last_name = str(row.get('last_name', '')).strip()
+    
+    if not first_name or first_name.lower() == 'nan':
+        return False, 'Missing first_name'
+    if not last_name or last_name.lower() == 'nan':
+        return False, 'Missing last_name'
+    
+    # Validate gender
+    gender = str(row.get('gender', '')).strip().lower()
+    if gender not in ['male', 'female']:
+        return False, f'Invalid gender: {row.get("gender", "")}. Must be Male or Female'
+    
+    # Validate contact (required)
+    contact = str(row.get('contact', '')).strip()
+    if not contact or contact.lower() == 'nan' or contact.lower() == '':
+        return False, 'Missing contact information'
+    
+    # Validate DOB if provided (optional)
+    dob = row.get('dob', '')
+    if dob and str(dob).strip() and str(dob).lower() != 'nan':
+        try:
+            if isinstance(dob, str):
+                datetime.strptime(dob, '%Y-%m-%d').date()
+            else:
+                dob.date()
+        except (ValueError, AttributeError):
+            return False, f'Invalid date format for dob: {dob}. Use YYYY-MM-DD'
+    
+    return True, None
+
+
 @students_bp.route('/')
 @login_required
 @role_required('super_admin', 'school_admin')
@@ -288,8 +370,8 @@ def import_students():
             else:
                 df = pd.read_excel(file)
 
-            # Required columns
-            required_cols = ['first_name', 'last_name', 'gender', 'dob', 'guardian_name', 'contact']
+            # Required columns (dob is optional)
+            required_cols = ['first_name', 'last_name', 'gender', 'guardian_name', 'contact']
             missing_cols = [col for col in required_cols if col not in df.columns]
             if missing_cols:
                 flash(f'Missing required columns: {", ".join(missing_cols)}', 'danger')
@@ -297,48 +379,37 @@ def import_students():
 
             imported_count = 0
             skipped_rows = []
+            current_year = datetime.now().year
 
             # Process each row
             for idx, row in df.iterrows():
-                # Skip rows with missing names
-                first_name = str(row.get('first_name', '')).strip()
-                last_name = str(row.get('last_name', '')).strip()
-                
-                if not first_name or not last_name or first_name.lower() == 'nan' or last_name.lower() == 'nan':
-                    skipped_rows.append({'row': idx + 2, 'reason': 'Missing first_name or last_name'})
+                # Validate the row data
+                is_valid, error_msg = validate_student_data(row, idx)
+                if not is_valid:
+                    skipped_rows.append({'row': idx + 2, 'reason': error_msg})
                     continue
 
+                first_name = str(row.get('first_name', '')).strip()
+                last_name = str(row.get('last_name', '')).strip()
                 full_name = f"{first_name} {last_name}"
                 gender = str(row.get('gender', '')).strip().lower()
-                dob = row.get('dob', '')
                 guardian_name = str(row.get('guardian_name', '')).strip()
                 contact = str(row.get('contact', '')).strip()
 
-                # Generate student ID if not provided
+                # Handle student_id - use existing or generate new
                 student_id = str(row.get('student_id', '')).strip()
-                if not student_id or student_id.lower() == 'nan':
-                    student_id = f"STU-{uuid.uuid4().hex[:8].upper()}"
-
-                # Check for duplicate within the school
-                existing = Student.query.filter_by(
-                    school_id=current_user.school_id,
-                    student_id=student_id
-                ).first()
-
-                if existing:
-                    skipped_rows.append({'row': idx + 2, 'reason': f'Duplicate student_id: {student_id}'})
-                    continue
-
-                # Parse date of birth
-                parsed_dob = None
-                if dob:
-                    try:
-                        if isinstance(dob, str):
-                            parsed_dob = datetime.strptime(dob, '%Y-%m-%d').date()
-                        else:
-                            parsed_dob = dob.date()
-                    except:
-                        pass
+                if not student_id or student_id.lower() == 'nan' or student_id == '':
+                    # Generate new ID in TAQWA-YYYY-NNNN format
+                    student_id = generate_student_id(current_user.school_id, current_year)
+                else:
+                    # Check for duplicate within the school
+                    existing = Student.query.filter_by(
+                        school_id=current_user.school_id,
+                        student_id=student_id
+                    ).first()
+                    if existing:
+                        skipped_rows.append({'row': idx + 2, 'reason': f'Duplicate student_id: {student_id}'})
+                        continue
 
                 # Create student
                 student = Student(
