@@ -80,10 +80,7 @@ def validate_student_data(row, idx):
     if gender not in ['male', 'female']:
         return False, f'Invalid gender: {row.get("gender", "")}. Must be Male or Female'
     
-    # Validate contact (required)
-    contact = str(row.get('contact', '')).strip()
-    if not contact or contact.lower() == 'nan' or contact.lower() == '':
-        return False, 'Missing contact information'
+    # Contact is optional for import
     
     # Validate DOB if provided (optional)
     dob = row.get('dob', '')
@@ -375,8 +372,8 @@ def import_students():
             else:
                 df = pd.read_excel(file)
 
-            # Required columns (dob is optional)
-            required_cols = ['first_name', 'last_name', 'gender', 'guardian_name', 'contact']
+            # Required columns (dob and contact are optional)
+            required_cols = ['first_name', 'last_name', 'gender', 'guardian_name']
             missing_cols = [col for col in required_cols if col not in df.columns]
             if missing_cols:
                 flash(f'Missing required columns: {", ".join(missing_cols)}', 'danger')
