@@ -15,6 +15,7 @@ class School(db.Model):
     name = db.Column(db.String(200), nullable=False)
     address = db.Column(db.String(500))
     logo_path = db.Column(db.String(500), nullable=True)
+    week_start_date = db.Column(db.Date, nullable=True, default=None)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships

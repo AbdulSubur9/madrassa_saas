@@ -105,7 +105,10 @@ def record_payment():
             else:
                 pay_date = date.today()
 
-            week_num = get_week_number(pay_date)
+            school = db.session.get(
+                School, current_user.school_id
+            )
+            week_num = get_week_number(pay_date, school)
             year = pay_date.year
             month = pay_date.strftime('%B')
 
@@ -229,10 +232,12 @@ def bulk_record():
             else:
                 pay_date = date.today()
 
-            week_num = get_week_number(pay_date)
+            school = db.session.get(
+                School, current_user.school_id
+            )
+            week_num = get_week_number(pay_date, school)
             year = pay_date.year
             month = pay_date.strftime('%B')
-            school = db.session.get(School, current_user.school_id)
 
             success_count = 0
             skip_count = 0
@@ -485,3 +490,81 @@ def collector_summary():
 
     return render_template('collector_summary.html',
                            collectors=collectors)
+
+
+@payments_bp.route('/<int:payment_id>/void', methods=['POST'])
+@login_required
+@role_required('super_admin', 'school_admin')
+def void_payment(payment_id):
+    """Void a payment (mark as cancelled without deleting)."""
+    payment = db.session.get(Payment, payment_id)
+    if not payment:
+        flash('Payment not found.', 'danger')
+        return redirect(url_for('payments.list_payments'))
+
+    # School isolation
+    if (current_user.is_school_admin
+            and payment.school_id != current_user.school_id):
+        flash('Access denied.', 'danger')
+        return redirect(url_for('payments.list_payments'))
+
+    if payment.status == Payment.STATUS_VOID:
+        flash('Payment is already voided.', 'warning')
+        return redirect(url_for('payments.list_payments'))
+
+    payment.status = Payment.STATUS_VOID
+
+    audit = AuditLog(
+        user_id=current_user.id,
+        action=(
+            f'Voided payment: {payment.receipt_number} '
+            f'for {payment.student.full_name}'
+        )
+    )
+    db.session.add(audit)
+    db.session.commit()
+
+    flash(
+        f'Payment {payment.receipt_number} has been voided.',
+        'success'
+    )
+    return redirect(url_for('payments.list_payments'))
+
+
+@payments_bp.route('/unvoid/<int:payment_id>', methods=['GET', 'POST'])
+@login_required
+@role_required('super_admin', 'school_admin')
+def unvoid_payment(payment_id):
+    """Unvoid a payment (restore a voided payment)."""
+    payment = db.session.get(Payment, payment_id)
+    if not payment:
+        flash('Payment not found.', 'danger')
+        return redirect(url_for('payments.list_payments'))
+
+    # School isolation
+    if (current_user.is_school_admin
+            and payment.school_id != current_user.school_id):
+        flash('Access denied.', 'danger')
+        return redirect(url_for('payments.list_payments'))
+
+    if payment.status != Payment.STATUS_VOID:
+        flash('Payment is not voided.', 'warning')
+        return redirect(url_for('payments.list_payments'))
+
+    payment.status = Payment.STATUS_COMPLETED
+
+    audit = AuditLog(
+        user_id=current_user.id,
+        action=(
+            f'Unvoided payment: {payment.receipt_number} '
+            f'for {payment.student.full_name}'
+        )
+    )
+    db.session.add(audit)
+    db.session.commit()
+
+    flash(
+        f'Payment {payment.receipt_number} has been restored.',
+        'success'
+    )
+    return redirect(url_for('payments.list_payments'))
