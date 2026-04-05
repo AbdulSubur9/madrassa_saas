@@ -3,6 +3,8 @@
 import logging
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
+from werkzeug.utils import secure_filename
+import pandas as pd
 from app.extensions import db
 from app.models import Student, SchoolClass, AuditLog, Payment
 from app.students.forms import StudentForm, ClassForm
@@ -11,6 +13,87 @@ from app.utils import role_required
 logger = logging.getLogger(__name__)
 
 students_bp = Blueprint('students', __name__, template_folder='../templates')
+
+ALLOWED_EXTENSIONS = {'xlsx', 'csv'}
+
+
+def generate_student_id(school_id, year=None):
+    """
+    Generate a unique student ID in the format TAQWA-{year}-{number}.
+    
+    Args:
+        school_id: The ID of the school
+        year: The academic year (defaults to current year)
+    
+    Returns:
+        A unique student ID string
+    """
+    if year is None:
+        year = datetime.now().year
+    
+    # Query for existing TAQWA IDs for this school and year
+    prefix = f'TAQWA-{year}-'
+    existing_ids = Student.query.filter(
+        Student.school_id == school_id,
+        Student.student_id.like(f'{prefix}%')
+    ).all()
+    
+    # Find the highest number
+    max_num = 0
+    for student in existing_ids:
+        try:
+            # Extract the number after TAQWA-YYYY-
+            num_part = student.student_id.replace(prefix, '')
+            num = int(num_part)
+            if num > max_num:
+                max_num = num
+        except (ValueError, AttributeError):
+            continue
+    
+    # Generate the next ID
+    new_num = max_num + 1
+    return f'{prefix}{new_num:04d}'
+
+
+def validate_student_data(row, idx):
+    """
+    Validate a single row of student data.
+    
+    Args:
+        row: A pandas Series row from the Excel file
+        idx: The row index (for error reporting)
+    
+    Returns:
+        A tuple (is_valid, error_message)
+    """
+    # Validate required fields
+    first_name = str(row.get('first_name', '')).strip()
+    last_name = str(row.get('last_name', '')).strip()
+    
+    if not first_name or first_name.lower() == 'nan':
+        return False, 'Missing first_name'
+    if not last_name or last_name.lower() == 'nan':
+        return False, 'Missing last_name'
+    
+    # Validate gender
+    gender = str(row.get('gender', '')).strip().lower()
+    if gender not in ['male', 'female']:
+        return False, f'Invalid gender: {row.get("gender", "")}. Must be Male or Female'
+    
+    # Contact is optional for import
+    
+    # Validate DOB if provided (optional)
+    dob = row.get('dob', '')
+    if dob and str(dob).strip() and str(dob).lower() != 'nan':
+        try:
+            if isinstance(dob, str):
+                datetime.strptime(dob, '%Y-%m-%d').date()
+            else:
+                dob.date()
+        except (ValueError, AttributeError):
+            return False, f'Invalid date format for dob: {dob}. Use YYYY-MM-DD'
+    
+    return True, None
 
 
 @students_bp.route('/')
@@ -59,10 +142,15 @@ def add_student():
     form.class_id.choices = [(0, '-- Select Class --')] + [(c.id, c.class_name) for c in classes]
 
     if form.validate_on_submit():
+        # Generate student ID if not provided
+        student_id = form.student_id.data.strip() if form.student_id.data else ''
+        if not student_id:
+            student_id = generate_student_id(current_user.school_id)
+        
         # Check for duplicate student ID within the school
         existing = Student.query.filter_by(
             school_id=current_user.school_id,
-            student_id=form.student_id.data
+            student_id=student_id
         ).first()
         if existing:
             flash('A student with this ID already exists in your school.', 'danger')
@@ -70,7 +158,7 @@ def add_student():
 
         student = Student(
             school_id=current_user.school_id,
-            student_id=form.student_id.data.strip(),
+            student_id=student_id,
             full_name=form.full_name.data.strip(),
             gender=form.gender.data,
             class_id=form.class_id.data if form.class_id.data != 0 else None,

@@ -309,6 +309,34 @@ def bulk_record():
     )
 
 
+@payments_bp.route('/search-students')
+@login_required
+@role_required('super_admin', 'school_admin', 'collector')
+def search_students():
+    """API endpoint to search students by name or ID (for AJAX)."""
+    from flask import jsonify
+    query = request.args.get('q', '').strip()
+    
+    if not query or len(query) < 2:
+        return jsonify([])
+    
+    students = Student.query.filter(
+        Student.school_id == current_user.school_id,
+        Student.status == 'active',
+        db.or_(
+            Student.full_name.ilike(f'%{query}%'),
+            Student.student_id.ilike(f'%{query}%')
+        )
+    ).order_by(Student.full_name).limit(20).all()
+
+    return jsonify([{
+        'id': s.id,
+        'student_id': s.student_id,
+        'full_name': s.full_name,
+        'class_name': s.school_class.class_name if s.school_class else 'N/A'
+    } for s in students])
+
+
 @payments_bp.route('/get-students/<int:class_id>')
 @login_required
 @role_required('super_admin', 'school_admin', 'collector')

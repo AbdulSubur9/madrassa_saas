@@ -15,7 +15,7 @@
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">{{ form.student_id.label.text }}</label>
-                            {{ form.student_id(class="form-control", placeholder="e.g. STU-001") }}
+                            {{ form.student_id(class="form-control", placeholder="Leave empty to auto-generate (e.g. TAQWA-2026-0001)") }}
                             {% for error in form.student_id.errors %}
                             <div class="text-danger small">{{ error }}</div>
                             {% endfor %}

@@ -30,10 +30,26 @@ def role_required(*roles):
     return decorator
 
 
-def get_week_number(d=None):
-    """Get the ISO week number for a given date."""
+def get_week_number(d=None, school=None):
+    """Get the week number for a given date.
+    
+    If school has week_start_date configured, calculates weeks from that date.
+    Otherwise, uses ISO week number.
+    """
     if d is None:
         d = date.today()
+    
+    # If school has custom week start date, use it
+    if school and school.week_start_date:
+        if d >= school.week_start_date:
+            delta = d - school.week_start_date
+            week_num = (delta.days // 7) + 1
+            return max(1, week_num)
+        else:
+            # Date is before week start date
+            return 1
+    
+    # Default: ISO week number
     return d.isocalendar()[1]
 
 

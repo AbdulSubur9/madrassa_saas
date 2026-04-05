@@ -1,0 +1,67 @@
+{% extends "layout.html" %}
+{% block title %}Import Results{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Import Results</h4>
+        <small class="text-muted">Summary of student import</small>
+    </div>
+    <a href="{{ url_for('students.list_students') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Back to Students
+    </a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card stat-card border-success">
+            <div class="card-body text-center">
+                <div class="text-success mb-2">
+                    <i class="bi bi-check-circle-fill fs-1"></i>
+                </div>
+                <h3 class="mb-0">{{ imported }}</h3>
+                <small class="text-muted">Students Imported</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card stat-card border-warning">
+            <div class="card-body text-center">
+                <div class="text-warning mb-2">
+                    <i class="bi bi-exclamation-triangle-fill fs-1"></i>
+                </div>
+                <h3 class="mb-0">{{ skipped }}</h3>
+                <small class="text-muted">Rows Skipped</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if skipped_rows %}
+<div class="card stat-card">
+    <div class="card-header bg-light">
+        <h6 class="mb-0 fw-semibold">Skipped Rows Details</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Row</th>
+                        <th>Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in skipped_rows %}
+                    <tr>
+                        <td>{{ row.row }}</td>
+                        <td>{{ row.reason }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

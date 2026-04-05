@@ -157,6 +157,21 @@ def assign_admin(school_id):
     return render_template('assign_admin.html', school=school)
 
 
+@schools_bp.route('/deactivate_school/<int:school_id>', methods=['POST'])
+@role_required('super_admin')
+def deactivate_school(school_id):
+
+    school = School.query.get_or_404(school_id)
+
+    school.is_active = False
+
+    db.session.commit()
+
+    flash("School has been deactivated", "warning")
+
+    return redirect(url_for('schools.list_schools'))
+    
+
 @schools_bp.route('/<int:school_id>/details')
 @login_required
 @role_required('super_admin')

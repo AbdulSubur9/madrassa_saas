@@ -2,13 +2,44 @@
 {% block title %}Record Payment{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-8">
+<div class="row">
+    <div class="col-md-12">
         <div class="card stat-card">
             <div class="card-header bg-white">
                 <h5 class="mb-0 fw-bold"><i class="bi bi-cash-coin"></i> Record Payment</h5>
             </div>
             <div class="card-body">
+                {% if current_user.role == 'collector' %}
+                <!-- Search functionality for collectors -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Search Student</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" id="studentSearch" class="form-control" placeholder="Search by student name or ID...">
+                        <button type="button" id="searchBtn" class="btn btn-mt-green">Search</button>
+                    </div>
+                    <small class="text-muted">Type at least 2 characters to search</small>
+                </div>
+                
+                <!-- Search Results -->
+                <div id="searchResults" class="mb-4" style="display: none;">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Student ID</th>
+                                    <th>Name</th>
+                                    <th>Class</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="searchResultsBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+                
                 <form method="POST" action="{{ url_for('payments.record_payment') }}">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -76,5 +107,84 @@ document.getElementById('classFilter').addEventListener('change', function() {
     });
     studentSelect.value = '';
 });
+
+// Student search for collectors
+const searchInput = document.getElementById('studentSearch');
+const searchBtn = document.getElementById('searchBtn');
+const searchResults = document.getElementById('searchResults');
+const searchResultsBody = document.getElementById('searchResultsBody');
+
+function performSearch() {
+    const query = searchInput.value.trim();
+    if (query.length < 2) {
+        searchResults.style.display = 'none';
+        return;
+    }
+    
+    fetch(`/payments/search-students?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            searchResultsBody.innerHTML = '';
+            if (data.length === 0) {
+                searchResultsBody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No students found</td></tr>';
+            } else {
+                data.forEach(student => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><code>${student.student_id}</code></td>
+                        <td class="fw-semibold">${student.full_name}</td>
+                        <td>${student.class_name}</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-mt-green" 
+                                    onclick="selectStudent(${student.id}, '${student.full_name.replace(/'/g, "\\'")} (${student.student_id})')">
+                                <i class="bi bi-check-circle"></i> Select
+                            </button>
+                        </td>
+                    `;
+                    searchResultsBody.appendChild(row);
+                });
+            }
+            searchResults.style.display = 'block';
+        })
+        .catch(error => {
+            console.error('Search error:', error);
+            searchResults.style.display = 'none';
+        });
+}
+
+function selectStudent(studentId, studentName) {
+    const studentSelect = document.getElementById('studentSelect');
+    studentSelect.value = studentId;
+    searchResults.style.display = 'none';
+    searchInput.value = '';
+    
+    // Show selected student in dropdown
+    const options = studentSelect.querySelectorAll('option');
+    options.forEach(option => {
+        if (option.value == studentId) {
+            option.selected = true;
+        }
+    });
+}
+
+if (searchBtn) {
+    searchBtn.addEventListener('click', performSearch);
+}
+
+if (searchInput) {
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch();
+        }
+    });
+    
+    // Live search with debounce
+    let debounceTimer;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(performSearch, 300);
+    });
+}
 </script>
 {% endblock %}

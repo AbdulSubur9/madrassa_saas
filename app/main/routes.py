@@ -61,8 +61,9 @@ def _super_admin_dashboard():
 def _school_dashboard():
     """Dashboard for school-level users."""
     school_id = current_user.school_id
+    school = db.session.get(School, school_id)
     today = date.today()
-    current_week = get_week_number(today)
+    current_week = get_week_number(today, school)
     current_year = today.year
     current_month = today.strftime('%B')
 
@@ -71,14 +72,15 @@ def _school_dashboard():
 
     # Today's payments
     total_payments_today = Payment.query.filter_by(
-        school_id=school_id, payment_date=today
+        school_id=school_id, payment_date=today, status=Payment.STATUS_COMPLETED
     ).count()
 
     today_revenue = db.session.query(
         func.coalesce(func.sum(Payment.amount), 0)
     ).filter(
         Payment.school_id == school_id,
-        Payment.payment_date == today
+        Payment.payment_date == today,
+        Payment.status == Payment.STATUS_COMPLETED
     ).scalar()
 
     # Weekly revenue
@@ -87,7 +89,8 @@ def _school_dashboard():
     ).filter(
         Payment.school_id == school_id,
         Payment.week_number == current_week,
-        Payment.year == current_year
+        Payment.year == current_year,
+        Payment.status == Payment.STATUS_COMPLETED
     ).scalar()
 
     # Monthly revenue
@@ -96,7 +99,8 @@ def _school_dashboard():
     ).filter(
         Payment.school_id == school_id,
         Payment.month == current_month,
-        Payment.year == current_year
+        Payment.year == current_year,
+        Payment.status == Payment.STATUS_COMPLETED
     ).scalar()
 
     # Yearly revenue
@@ -104,14 +108,16 @@ def _school_dashboard():
         func.coalesce(func.sum(Payment.amount), 0)
     ).filter(
         Payment.school_id == school_id,
-        Payment.year == current_year
+        Payment.year == current_year,
+        Payment.status == Payment.STATUS_COMPLETED
     ).scalar()
 
     # Defaulters count (students who haven't paid this week)
     paid_this_week = db.session.query(Payment.student_id).filter(
         Payment.school_id == school_id,
         Payment.week_number == current_week,
-        Payment.year == current_year
+        Payment.year == current_year,
+        Payment.status == Payment.STATUS_COMPLETED
     ).distinct().count()
 
     defaulters_count = max(0, total_students - paid_this_week)
@@ -122,8 +128,6 @@ def _school_dashboard():
     ).filter(
         Payment.school_id == school_id
     ).order_by(Payment.created_at.desc()).limit(10).all()
-
-    school = db.session.get(School, school_id)
 
     return render_template('dashboard.html',
                            school=school,

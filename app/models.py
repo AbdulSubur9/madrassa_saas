@@ -22,6 +22,7 @@ class School(db.Model):
     classes = db.relationship('SchoolClass', backref='school', lazy='dynamic')
     students = db.relationship('Student', backref='school', lazy='dynamic')
     payments = db.relationship('Payment', backref='school', lazy='dynamic')
+    
 
     def __repr__(self):
         return f'<School {self.name}>'
@@ -143,6 +144,9 @@ class Payment(db.Model):
 
     __tablename__ = 'payments'
 
+    STATUS_COMPLETED = 'completed'
+    STATUS_VOID = 'void'
+
     id = db.Column(db.Integer, primary_key=True)
     school_id = db.Column(db.Integer, db.ForeignKey('schools.id'), nullable=False, index=True)
     student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=False, index=True)
@@ -152,14 +156,20 @@ class Payment(db.Model):
     month = db.Column(db.String(20), nullable=False)
     year = db.Column(db.Integer, nullable=False)
     receipt_number = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default=STATUS_COMPLETED, index=True)
     recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
 
     # Prevent duplicate payment per student per week per year
     __table_args__ = (
         db.UniqueConstraint('school_id', 'student_id', 'week_number', 'year',
                             name='uq_student_weekly_payment'),
     )
+
+    @property
+    def is_void(self):
+        return self.status == self.STATUS_VOID
 
     def __repr__(self):
         return f'<Payment {self.receipt_number}>'

@@ -7,9 +7,14 @@
         <h4 class="fw-bold mb-0">Students</h4>
         <small class="text-muted">Manage students in your school</small>
     </div>
-    <a href="{{ url_for('students.add_student') }}" class="btn btn-mt-green">
-        <i class="bi bi-person-plus"></i> Add Student
-    </a>
+    <div>
+        <a href="{{ url_for('students.import_students') }}" class="btn btn-outline-success">
+            <i class="bi bi-upload"></i> Import Students
+        </a>
+        <a href="{{ url_for('students.add_student') }}" class="btn btn-mt-green">
+            <i class="bi bi-person-plus"></i> Add Student
+        </a>
+    </div>
 </div>
 
 <!-- Search & Filter -->
