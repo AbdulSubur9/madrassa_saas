@@ -11,9 +11,10 @@ def create_app(config_name='development'):
     app = Flask(__name__)
     app.config.from_object(config[config_name])
 
-    # Ensure instance and receipts folders exist
+    # Ensure instance, receipts, and upload folders exist
     os.makedirs(app.instance_path, exist_ok=True)
     os.makedirs(app.config.get('RECEIPTS_FOLDER', 'receipts'), exist_ok=True)
+    os.makedirs(app.config.get('UPLOAD_FOLDER', 'uploads'), exist_ok=True)
 
     # Initialize extensions
     db.init_app(app)

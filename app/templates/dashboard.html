@@ -2,17 +2,62 @@
 {% block title %}Dashboard{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h4 class="fw-bold mb-0">Dashboard</h4>
-        <small class="text-muted">{{ school.name if school else 'School Overview' }} &mdash; Week {{ current_week }}</small>
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-3">
+        {% if school and school.logo_path %}
+        <img src="{{ url_for('static', filename=school.logo_path) }}" alt="{{ school.name }}" class="school-logo-lg d-none d-sm-block">
+        {% endif %}
+        <div>
+            <h4 class="fw-bold mb-0">Dashboard</h4>
+            <small class="text-muted">{{ school.name if school else 'School Overview' }} &mdash; Week {{ current_week }}</small>
+        </div>
     </div>
-    {% if current_user.role in ['super_admin', 'school_admin', 'collector'] %}
-    <a href="{{ url_for('payments.record_payment') }}" class="btn btn-mt-green">
-        <i class="bi bi-plus-circle"></i> Record Payment
-    </a>
-    {% endif %}
+    <div class="d-flex gap-2 flex-wrap">
+        {% if current_user.role in ['super_admin', 'school_admin', 'collector'] %}
+        <a href="{{ url_for('payments.record_payment') }}" class="btn btn-mt-green btn-sm">
+            <i class="bi bi-plus-circle"></i> Record Payment
+        </a>
+        {% endif %}
+        {% if current_user.role in ['super_admin', 'school_admin'] %}
+        <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#logoModal">
+            <i class="bi bi-image"></i> <span class="d-none d-sm-inline">School Logo</span>
+        </button>
+        {% endif %}
+    </div>
 </div>
+
+{% if current_user.role in ['super_admin', 'school_admin'] %}
+<!-- Logo Upload Modal -->
+<div class="modal fade" id="logoModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title fw-bold">Upload School Logo</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('schools.upload_logo') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-body">
+                    {% if school and school.logo_path %}
+                    <div class="text-center mb-3">
+                        <img src="{{ url_for('static', filename=school.logo_path) }}" alt="Current Logo" class="school-logo-lg">
+                        <p class="text-muted small mt-1">Current logo</p>
+                    </div>
+                    {% endif %}
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Select Image</label>
+                        <input type="file" name="logo" class="form-control form-control-sm" accept="image/*" required>
+                        <div class="form-text">PNG, JPG, GIF, WEBP. Max 5MB.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-mt-green btn-sm">Upload Logo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Stats Row -->
 <div class="row g-3 mb-4">

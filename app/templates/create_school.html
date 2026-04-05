@@ -9,7 +9,7 @@
                 <h5 class="mb-0 fw-bold"><i class="bi bi-building-add"></i> Create School</h5>
             </div>
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="mb-3">
@@ -20,6 +20,12 @@
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Address</label>
                         <textarea name="address" class="form-control" rows="2" placeholder="School address (optional)"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">School Logo</label>
+                        <input type="file" name="logo" class="form-control" accept="image/*">
+                        <div class="form-text">PNG, JPG, GIF, WEBP. Max 5MB. Optional.</div>
                     </div>
 
                     <div class="mt-4">

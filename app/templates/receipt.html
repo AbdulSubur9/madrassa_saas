@@ -6,9 +6,13 @@
     <div class="col-md-6">
         <div class="card stat-card">
             <div class="card-body text-center py-4">
+                {% if school.logo_path %}
+                <img src="{{ url_for('static', filename=school.logo_path) }}" alt="{{ school.name }}" style="max-height:64px;" class="mb-3">
+                {% else %}
                 <div class="bg-mt-green text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width:64px;height:64px;font-size:1.5rem;">
                     <i class="bi bi-receipt-cutoff"></i>
                 </div>
+                {% endif %}
                 <h4 class="fw-bold text-mt-green">Payment Receipt</h4>
                 <p class="text-muted">{{ school.name }}</p>
                 {% if school.address %}

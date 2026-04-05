@@ -28,6 +28,7 @@
             border-radius: 0.5rem;
             margin: 0.15rem 0.5rem;
             transition: all 0.2s;
+            font-size: 0.9rem;
         }
         .sidebar .nav-link:hover, .sidebar .nav-link.active {
             background-color: var(--mt-green);
@@ -65,9 +66,55 @@
             padding: 0.35em 0.65em;
         }
         .table th { font-weight: 600; font-size: 0.85rem; text-transform: uppercase; color: #555; }
+        .profile-avatar {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+        .profile-avatar-lg {
+            width: 100px; height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--mt-green);
+        }
+        .school-logo {
+            max-height: 40px;
+            max-width: 40px;
+            object-fit: contain;
+        }
+        .school-logo-lg {
+            max-height: 80px;
+            max-width: 200px;
+            object-fit: contain;
+        }
+        /* Mobile responsive enhancements */
         @media (max-width: 768px) {
             .sidebar { min-height: auto; }
+            .content-area { padding: 1rem 0.5rem; padding-bottom: 80px; }
+            .stat-card .stat-icon { width: 40px; height: 40px; font-size: 1.1rem; }
+            .stat-card .fs-4 { font-size: 1.1rem !important; }
+            .stat-card .fs-3 { font-size: 1.2rem !important; }
+            h4 { font-size: 1.15rem; }
+            .btn-lg { font-size: 1rem; padding: 0.5rem 1rem; }
+            .table { font-size: 0.85rem; }
+            .table td, .table th { padding: 0.4rem 0.5rem; white-space: nowrap; }
+            .btn-group-sm > .btn { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
+            .d-flex.justify-content-between { flex-wrap: wrap; gap: 0.5rem; }
         }
+        @media (max-width: 576px) {
+            .content-area { padding: 0.75rem 0.25rem; padding-bottom: 80px; }
+            .card-body { padding: 0.75rem; }
+        }
+        /* Loading spinner */
+        .btn-loading { position: relative; pointer-events: none; opacity: 0.7; }
+        .btn-loading::after {
+            content: ''; position: absolute; width: 1rem; height: 1rem;
+            top: 50%; left: 50%; margin: -0.5rem 0 0 -0.5rem;
+            border: 2px solid transparent; border-top-color: currentColor;
+            border-radius: 50%; animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -76,7 +123,12 @@
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('main.dashboard') }}">
-                <i class="bi bi-book"></i> MT-ISPMS
+                {% if current_user.is_authenticated and current_user.school and current_user.school.logo_path %}
+                <img src="{{ url_for('static', filename=current_user.school.logo_path) }}" alt="Logo" class="school-logo me-1">
+                {% else %}
+                <i class="bi bi-book"></i>
+                {% endif %}
+                MT-ISPMS
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
@@ -86,10 +138,16 @@
                     {% if current_user.is_authenticated %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle"></i> {{ current_user.full_name or current_user.username }}
-                            <span class="badge bg-light text-dark badge-role ms-1">{{ current_user.role.replace('_', ' ').title() }}</span>
+                            {% if current_user.profile_picture %}
+                            <img src="{{ url_for('static', filename=current_user.profile_picture) }}" alt="Profile" class="profile-avatar me-1">
+                            {% else %}
+                            <i class="bi bi-person-circle"></i>
+                            {% endif %}
+                            <span class="d-none d-sm-inline">{{ current_user.full_name or current_user.username }}</span>
+                            <span class="badge bg-light text-dark badge-role ms-1 d-none d-md-inline">{{ current_user.role.replace('_', ' ').title() }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('auth.user_profile') }}"><i class="bi bi-person"></i> My Profile</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('auth.change_password') }}"><i class="bi bi-key"></i> Change Password</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i> Logout</a></li>
@@ -148,6 +206,13 @@
                     </a>
                     {% endif %}
 
+                    {% if current_user.role in ['super_admin', 'school_admin'] %}
+                    <a class="nav-link {% if request.endpoint == 'payments.collector_summary' %}active{% endif %}"
+                       href="{{ url_for('payments.collector_summary') }}">
+                        <i class="bi bi-people-fill"></i> Collector Summary
+                    </a>
+                    {% endif %}
+
                     {% if current_user.role in ['super_admin', 'school_admin', 'accountant'] %}
                     <a class="nav-link {% if 'reports' in request.endpoint|default('') %}active{% endif %}"
                        href="{{ url_for('reports.reports_home') }}">
@@ -180,6 +245,11 @@
                 <div class="mb-3">
                     {% for category, message in messages %}
                     <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {% if category == 'success' %}<i class="bi bi-check-circle-fill me-1"></i>
+                        {% elif category == 'danger' %}<i class="bi bi-exclamation-circle-fill me-1"></i>
+                        {% elif category == 'warning' %}<i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        {% elif category == 'info' %}<i class="bi bi-info-circle-fill me-1"></i>
+                        {% endif %}
                         {{ message }}
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
@@ -195,10 +265,10 @@
 
     <!-- Mobile Bottom Nav -->
     {% if current_user.is_authenticated %}
-    <nav class="navbar fixed-bottom navbar-light bg-white border-top d-md-none">
+    <nav class="navbar fixed-bottom navbar-light bg-white border-top d-md-none py-1">
         <div class="container-fluid d-flex justify-content-around">
             <a href="{{ url_for('main.dashboard') }}" class="text-center text-decoration-none text-mt-green">
-                <i class="bi bi-speedometer2 d-block"></i><small>Dashboard</small>
+                <i class="bi bi-speedometer2 d-block"></i><small>Home</small>
             </a>
             {% if current_user.role in ['super_admin', 'school_admin', 'collector'] %}
             <a href="{{ url_for('payments.record_payment') }}" class="text-center text-decoration-none text-mt-green">
@@ -210,17 +280,36 @@
                 <i class="bi bi-people d-block"></i><small>Students</small>
             </a>
             {% endif %}
-            {% if current_user.role in ['super_admin', 'school_admin', 'accountant'] %}
-            <a href="{{ url_for('reports.reports_home') }}" class="text-center text-decoration-none text-mt-green">
-                <i class="bi bi-graph-up d-block"></i><small>Reports</small>
+            {% if current_user.role in ['super_admin', 'school_admin', 'collector', 'accountant'] %}
+            <a href="{{ url_for('payments.list_payments') }}" class="text-center text-decoration-none text-mt-green">
+                <i class="bi bi-list-check d-block"></i><small>Payments</small>
             </a>
             {% endif %}
+            <a href="{{ url_for('auth.user_profile') }}" class="text-center text-decoration-none text-mt-green">
+                <i class="bi bi-person d-block"></i><small>Profile</small>
+            </a>
         </div>
     </nav>
     {% endif %}
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Loading state for forms -->
+    <script>
+    document.querySelectorAll('form').forEach(function(form) {
+        form.addEventListener('submit', function() {
+            var btn = form.querySelector('button[type="submit"]');
+            if (btn && !btn.classList.contains('btn-loading')) {
+                btn.classList.add('btn-loading');
+                btn.disabled = true;
+                setTimeout(function() {
+                    btn.classList.remove('btn-loading');
+                    btn.disabled = false;
+                }, 8000);
+            }
+        });
+    });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

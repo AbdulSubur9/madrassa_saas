@@ -1,10 +1,13 @@
 """School management routes (Super Admin only)."""
 
+import logging
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app.extensions import db
 from app.models import School, User, AuditLog
-from app.utils import role_required
+from app.utils import role_required, save_upload_file, allowed_image_file
+
+logger = logging.getLogger(__name__)
 
 schools_bp = Blueprint('schools', __name__, template_folder='../templates')
 
@@ -32,6 +35,18 @@ def create_school():
             return render_template('create_school.html')
 
         school = School(name=name, address=address)
+
+        # Handle logo upload
+        if 'logo' in request.files:
+            file = request.files['logo']
+            if file and file.filename:
+                if not allowed_image_file(file.filename):
+                    flash('Invalid logo file. Only images allowed.', 'danger')
+                    return render_template('create_school.html')
+                saved_path = save_upload_file(file, subfolder='logos')
+                if saved_path:
+                    school.logo_path = saved_path
+
         db.session.add(school)
         db.session.flush()  # Get the school ID
 
@@ -70,6 +85,17 @@ def edit_school(school_id):
         old_name = school.name
         school.name = name
         school.address = address
+
+        # Handle logo upload
+        if 'logo' in request.files:
+            file = request.files['logo']
+            if file and file.filename:
+                if not allowed_image_file(file.filename):
+                    flash('Invalid logo file. Only images allowed.', 'danger')
+                    return render_template('edit_school.html', school=school)
+                saved_path = save_upload_file(file, subfolder='logos')
+                if saved_path:
+                    school.logo_path = saved_path
 
         audit = AuditLog(
             user_id=current_user.id,
@@ -147,3 +173,54 @@ def school_details(school_id):
 
     return render_template('school_details.html', school=school, admins=admins,
                            student_count=student_count, payment_count=payment_count)
+
+
+@schools_bp.route('/upload-logo', methods=['POST'])
+@login_required
+@role_required('super_admin', 'school_admin')
+def upload_logo():
+    """Upload school logo (for school admin)."""
+    if not current_user.school_id:
+        flash('No school associated with your account.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    school = db.session.get(School, current_user.school_id)
+    if not school:
+        flash('School not found.', 'danger')
+        return redirect(url_for('main.dashboard'))
+
+    if 'logo' not in request.files:
+        flash('No file selected.', 'warning')
+        return redirect(url_for('main.dashboard'))
+
+    file = request.files['logo']
+    if not file or not file.filename:
+        flash('No file selected.', 'warning')
+        return redirect(url_for('main.dashboard'))
+
+    if not allowed_image_file(file.filename):
+        flash(
+            'Invalid file type. Only images (PNG, JPG, GIF, WEBP) allowed.',
+            'danger'
+        )
+        return redirect(url_for('main.dashboard'))
+
+    try:
+        saved_path = save_upload_file(file, subfolder='logos')
+        if saved_path:
+            school.logo_path = saved_path
+            audit = AuditLog(
+                user_id=current_user.id,
+                action=f'Uploaded logo for school: {school.name}'
+            )
+            db.session.add(audit)
+            db.session.commit()
+            flash('School logo updated successfully.', 'success')
+        else:
+            flash('Failed to save logo file.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        logger.error('Logo upload failed: %s', e)
+        flash('Failed to upload logo. Please try again.', 'danger')
+
+    return redirect(url_for('main.dashboard'))

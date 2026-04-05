@@ -1,11 +1,14 @@
 """Student management routes."""
 
+import logging
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app.extensions import db
-from app.models import Student, SchoolClass, AuditLog
+from app.models import Student, SchoolClass, AuditLog, Payment
 from app.students.forms import StudentForm, ClassForm
 from app.utils import role_required
+
+logger = logging.getLogger(__name__)
 
 students_bp = Blueprint('students', __name__, template_folder='../templates')
 
@@ -250,3 +253,47 @@ def delete_class(class_id):
 
     flash(f'Class "{class_name}" deleted successfully.', 'success')
     return redirect(url_for('students.list_classes'))
+
+
+@students_bp.route('/<int:student_pk>/delete', methods=['POST'])
+@login_required
+@role_required('super_admin', 'school_admin')
+def delete_student(student_pk):
+    """Delete a student and their payment records (admin only)."""
+    student = db.session.get(Student, student_pk)
+    if not student or student.school_id != current_user.school_id:
+        flash('Student not found.', 'danger')
+        return redirect(url_for('students.list_students'))
+
+    try:
+        student_name = student.full_name
+        student_sid = student.student_id
+
+        # Delete associated payments first
+        payment_count = Payment.query.filter_by(
+            student_id=student.id,
+            school_id=current_user.school_id
+        ).delete()
+
+        audit = AuditLog(
+            user_id=current_user.id,
+            action=(
+                f'Deleted student {student_name} (ID: {student_sid}) '
+                f'and {payment_count} associated payments'
+            )
+        )
+        db.session.add(audit)
+        db.session.delete(student)
+        db.session.commit()
+
+        flash(
+            f'Student "{student_name}" and {payment_count} '
+            f'payment record(s) deleted successfully.',
+            'success'
+        )
+    except Exception as e:
+        db.session.rollback()
+        logger.error('Student deletion failed: %s', e)
+        flash('Failed to delete student. Please try again.', 'danger')
+
+    return redirect(url_for('students.list_students'))
