@@ -11,6 +11,7 @@ This will create:
 
 import os
 import sys
+import subprocess
 
 # Ensure the app can be imported
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -25,8 +26,16 @@ def seed():
     app = create_app(os.environ.get('FLASK_CONFIG', 'development'))
 
     with app.app_context():
-        # Note: migrations handle schema creation (flask db upgrade)
-        # Do NOT use db.create_all() as it conflicts with Alembic migrations
+        # Run migrations first to ensure schema is up to date
+        print('Running database migrations...')
+        try:
+            from flask_migrate import upgrade as db_upgrade
+            db_upgrade()
+            print('Migrations completed successfully.')
+        except Exception as e:
+            print(f'Migration warning: {e}')
+            print('Falling back to db.create_all()...')
+            db.create_all()
 
         # Check if super admin already exists
         existing_admin = User.query.filter_by(username='admin').first()
