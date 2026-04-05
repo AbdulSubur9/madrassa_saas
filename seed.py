@@ -25,8 +25,8 @@ def seed():
     app = create_app(os.environ.get('FLASK_CONFIG', 'development'))
 
     with app.app_context():
-        # Create all tables
-        db.create_all()
+        # Note: migrations handle schema creation (flask db upgrade)
+        # Do NOT use db.create_all() as it conflicts with Alembic migrations
 
         # Check if super admin already exists
         existing_admin = User.query.filter_by(username='admin').first()
