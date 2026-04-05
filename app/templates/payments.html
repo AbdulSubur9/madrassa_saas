@@ -2,17 +2,19 @@
 {% block title %}Payments{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
     <div>
         <h4 class="fw-bold mb-0">Payments</h4>
-        <small class="text-muted">Payment records</small>
+        <small class="text-muted">
+            {% if current_user.is_collector %}Your recorded payments{% else %}Payment records{% endif %}
+        </small>
     </div>
     {% if current_user.role in ['super_admin', 'school_admin', 'collector'] %}
-    <div>
-        <a href="{{ url_for('payments.record_payment') }}" class="btn btn-mt-green">
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('payments.record_payment') }}" class="btn btn-mt-green btn-sm">
             <i class="bi bi-plus-circle"></i> Record Payment
         </a>
-        <a href="{{ url_for('payments.bulk_record') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('payments.bulk_record') }}" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-cash-stack"></i> Bulk Payment
         </a>
     </div>
@@ -23,17 +25,28 @@
 <div class="card stat-card mb-4">
     <div class="card-body">
         <form method="GET" class="row g-2 align-items-end">
-            <div class="col-md-4">
+            <div class="col-6 col-md-3">
                 <label class="form-label small fw-semibold">Date</label>
-                <input type="date" name="date" class="form-control" value="{{ date_filter }}">
+                <input type="date" name="date" class="form-control form-control-sm" value="{{ date_filter }}">
             </div>
-            <div class="col-md-3">
-                <label class="form-label small fw-semibold">Week Number</label>
-                <input type="number" name="week" class="form-control" placeholder="e.g. 10" value="{{ week_filter or '' }}" min="1" max="53">
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-semibold">Week #</label>
+                <input type="number" name="week" class="form-control form-control-sm" placeholder="e.g. 10" value="{{ week_filter or '' }}" min="1" max="53">
             </div>
-            <div class="col-md-3">
-                <button type="submit" class="btn btn-mt-green"><i class="bi bi-funnel"></i> Filter</button>
-                <a href="{{ url_for('payments.list_payments') }}" class="btn btn-outline-secondary">Clear</a>
+            {% if not current_user.is_collector and collectors %}
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-semibold">Collector</label>
+                <select name="collector" class="form-select form-select-sm">
+                    <option value="0">All Collectors</option>
+                    {% for c in collectors %}
+                    <option value="{{ c.id }}" {% if collector_filter == c.id %}selected{% endif %}>{{ c.full_name or c.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            <div class="col-6 col-md-2">
+                <button type="submit" class="btn btn-mt-green btn-sm"><i class="bi bi-funnel"></i> Filter</button>
+                <a href="{{ url_for('payments.list_payments') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
             </div>
         </form>
     </div>
@@ -53,6 +66,9 @@
                         <th>Date</th>
                         <th>Week</th>
                         <th>Status</th>
+                        {% if not current_user.is_collector %}
+                        <th>Recorded By</th>
+                        {% endif %}
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -60,18 +76,21 @@
                     {% for payment in payments.items %}
                     <tr class="{{ 'table-danger' if payment.status == 'void' else '' }}">
                         <td>{{ loop.index + (payments.page - 1) * payments.per_page }}</td>
-                        <td><code>{{ payment.receipt_number }}</code></td>
+                        <td><code class="small">{{ payment.receipt_number }}</code></td>
                         <td class="fw-semibold">{{ payment.student.full_name }}</td>
                         <td>GH&#8373;{{ "%.2f"|format(payment.amount) }}</td>
                         <td>{{ payment.payment_date.strftime('%b %d, %Y') }}</td>
-                        <td>Week {{ payment.week_number }}</td>
+                        <td>{{ payment.week_number }}</td>
                         <td>
                             {% if payment.status == 'void' %}
-                            <span class="badge bg-danger">VOID</span>
+                            <span class="badge bg-danger">Void</span>
                             {% else %}
                             <span class="badge bg-success">Completed</span>
                             {% endif %}
                         </td>
+                        {% if not current_user.is_collector %}
+                        <td class="small">{{ payment.recorder.full_name if payment.recorder else '-' }}</td>
+                        {% endif %}
                         <td>
                             <div class="btn-group btn-group-sm">
                                 <a href="{{ url_for('payments.payment_receipt', payment_id=payment.id) }}" class="btn btn-outline-primary" title="View Receipt">
@@ -80,22 +99,29 @@
                                 <a href="{{ url_for('payments.download_receipt', payment_id=payment.id) }}" class="btn btn-outline-success" title="Download PDF">
                                     <i class="bi bi-file-pdf"></i>
                                 </a>
-                                {% if payment.status != 'void' and current_user.role in ['super_admin', 'school_admin'] %}
-                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#voidModal{{ payment.id }}" title="Void Payment">
+                                {% if current_user.role in ['super_admin', 'school_admin'] %}
+                                {% if payment.status != 'void' %}
+                                <button type="button" class="btn btn-outline-warning" title="Void" data-bs-toggle="modal" data-bs-target="#voidModal{{ payment.id }}">
                                     <i class="bi bi-x-circle"></i>
                                 </button>
-                                {% endif %}
-                                {% if payment.status == 'void' and current_user.role in ['super_admin', 'school_admin'] %}
-                                <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#unvoidModal{{ payment.id }}" title="Restore Payment">
+                                {% else %}
+                                <button type="button" class="btn btn-outline-info" title="Restore" data-bs-toggle="modal" data-bs-target="#unvoidModal{{ payment.id }}">
                                     <i class="bi bi-arrow-counterclockwise"></i>
                                 </button>
+                                {% endif %}
+                                <form method="POST" action="{{ url_for('payments.delete_payment', payment_id=payment.id) }}" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger" title="Delete" onclick="return confirm('Are you sure you want to delete this payment record?')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
                                 {% endif %}
                             </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-4">No payments found.</td>
+                        <td colspan="{% if current_user.is_collector %}8{% else %}9{% endif %}" class="text-center text-muted py-4">No payments found.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -108,17 +134,17 @@
         <nav>
             <ul class="pagination pagination-sm justify-content-center mb-0">
                 {% if payments.has_prev %}
-                <li class="page-item"><a class="page-link" href="{{ url_for('payments.list_payments', page=payments.prev_num, date=date_filter, week=week_filter) }}">Previous</a></li>
+                <li class="page-item"><a class="page-link" href="{{ url_for('payments.list_payments', page=payments.prev_num, date=date_filter, week=week_filter, collector=collector_filter) }}">Previous</a></li>
                 {% endif %}
                 {% for p in payments.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
                 {% if p %}
-                <li class="page-item {% if p == payments.page %}active{% endif %}"><a class="page-link" href="{{ url_for('payments.list_payments', page=p, date=date_filter, week=week_filter) }}">{{ p }}</a></li>
+                <li class="page-item {% if p == payments.page %}active{% endif %}"><a class="page-link" href="{{ url_for('payments.list_payments', page=p, date=date_filter, week=week_filter, collector=collector_filter) }}">{{ p }}</a></li>
                 {% else %}
                 <li class="page-item disabled"><span class="page-link">...</span></li>
                 {% endif %}
                 {% endfor %}
                 {% if payments.has_next %}
-                <li class="page-item"><a class="page-link" href="{{ url_for('payments.list_payments', page=payments.next_num, date=date_filter, week=week_filter) }}">Next</a></li>
+                <li class="page-item"><a class="page-link" href="{{ url_for('payments.list_payments', page=payments.next_num, date=date_filter, week=week_filter, collector=collector_filter) }}">Next</a></li>
                 {% endif %}
             </ul>
         </nav>

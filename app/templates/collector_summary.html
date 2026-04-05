@@ -1,0 +1,84 @@
+{% extends "layout.html" %}
+{% block title %}Collector Summary{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h4 class="fw-bold mb-0">Collector Summary</h4>
+        <small class="text-muted">Payment totals per collector</small>
+    </div>
+    <a href="{{ url_for('payments.list_payments') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="bi bi-arrow-left"></i> Back to Payments
+    </a>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-md-4">
+        <div class="card stat-card h-100">
+            <div class="card-body text-center">
+                <div class="text-muted small">Total Collectors</div>
+                <div class="fw-bold fs-4">{{ collectors|length }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-4">
+        <div class="card stat-card h-100">
+            <div class="card-body text-center">
+                <div class="text-muted small">Total Payments</div>
+                <div class="fw-bold fs-4">{{ collectors|sum(attribute='payment_count') }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-md-4">
+        <div class="card stat-card h-100">
+            <div class="card-body text-center">
+                <div class="text-muted small">Total Amount</div>
+                <div class="fw-bold fs-4 text-mt-green">GH&#8373;{{ "%.2f"|format(collectors|sum(attribute='total_amount')) }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Collector Table -->
+<div class="card stat-card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Collector</th>
+                        <th>Username</th>
+                        <th class="text-center">Payments</th>
+                        <th class="text-end">Total Amount</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in collectors %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td class="fw-semibold">{{ item.full_name or item.username }}</td>
+                        <td class="text-muted small">{{ item.username }}</td>
+                        <td class="text-center">
+                            <span class="badge bg-primary rounded-pill">{{ item.payment_count }}</span>
+                        </td>
+                        <td class="text-end fw-bold">GH&#8373;{{ "%.2f"|format(item.total_amount) }}</td>
+                        <td>
+                            <a href="{{ url_for('payments.list_payments', collector=item.id) }}" class="btn btn-sm btn-outline-primary" title="View Payments">
+                                <i class="bi bi-eye"></i> <span class="d-none d-sm-inline">View</span>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">No collector data found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

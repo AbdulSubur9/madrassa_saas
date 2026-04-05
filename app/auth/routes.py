@@ -1,11 +1,14 @@
 """Authentication routes."""
 
+import logging
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
 from app.extensions import db
 from app.models import User, AuditLog
 from app.auth.forms import LoginForm, CreateUserForm, ChangePasswordForm
-from app.utils import role_required
+from app.utils import role_required, save_upload_file, allowed_image_file
+
+logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__, template_folder='../templates')
 
@@ -158,3 +161,53 @@ def change_password():
         return redirect(url_for('main.dashboard'))
 
     return render_template('change_password.html', form=form)
+
+
+@auth_bp.route('/profile', methods=['GET', 'POST'])
+@login_required
+def user_profile():
+    """View and edit user profile."""
+    if request.method == 'POST':
+        try:
+            full_name = request.form.get('full_name', '').strip()
+            email = request.form.get('email', '').strip()
+
+            if full_name:
+                current_user.full_name = full_name
+            if email:
+                current_user.email = email
+
+            # Handle profile picture upload
+            if 'profile_picture' in request.files:
+                file = request.files['profile_picture']
+                if file and file.filename:
+                    if not allowed_image_file(file.filename):
+                        flash(
+                            'Invalid file type. '
+                            'Only images (PNG, JPG, GIF, WEBP) allowed.',
+                            'danger'
+                        )
+                        return render_template('profile.html')
+
+                    saved_path = save_upload_file(
+                        file, subfolder='profiles'
+                    )
+                    if saved_path:
+                        current_user.profile_picture = saved_path
+
+            audit = AuditLog(
+                user_id=current_user.id,
+                action='Updated own profile'
+            )
+            db.session.add(audit)
+            db.session.commit()
+
+            flash('Profile updated successfully.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            logger.error('Profile update failed: %s', e)
+            flash('Failed to update profile. Please try again.', 'danger')
+
+        return redirect(url_for('auth.user_profile'))
+
+    return render_template('profile.html')

@@ -1,0 +1,116 @@
+{% extends "layout.html" %}
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="card stat-card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0 fw-bold"><i class="bi bi-person-circle"></i> My Profile</h5>
+            </div>
+            <div class="card-body">
+                <!-- Current Profile Info -->
+                <div class="text-center mb-4">
+                    {% if current_user.profile_picture %}
+                    <img src="{{ url_for('static', filename=current_user.profile_picture) }}" alt="Profile" class="rounded-circle mb-2" style="width:80px;height:80px;object-fit:cover;">
+                    {% else %}
+                    <div class="bg-mt-green text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width:80px;height:80px;font-size:2rem;">
+                        <i class="bi bi-person-fill"></i>
+                    </div>
+                    {% endif %}
+                    <h6 class="fw-bold mb-0">{{ current_user.full_name or current_user.username }}</h6>
+                    <small class="text-muted">{{ current_user.role | replace('_', ' ') | title }}</small>
+                    {% if current_user.school %}
+                    <br><small class="text-muted"><i class="bi bi-building"></i> {{ current_user.school.name }}</small>
+                    {% endif %}
+                </div>
+
+                <hr>
+
+                <!-- Edit Profile Form -->
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Full Name</label>
+                        <input type="text" name="full_name" class="form-control" value="{{ current_user.full_name or '' }}" placeholder="Enter your full name">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Email</label>
+                        <input type="email" name="email" class="form-control" value="{{ current_user.email or '' }}" placeholder="Enter your email address">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Username</label>
+                        <input type="text" class="form-control" value="{{ current_user.username }}" disabled>
+                        <div class="form-text">Username cannot be changed.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Profile Picture</label>
+                        <input type="file" name="profile_picture" class="form-control" accept="image/*" id="profilePicInput">
+                        <div class="form-text">PNG, JPG, GIF, WEBP. Max 5MB.</div>
+                        <div id="profilePicPreview" class="mt-2" style="display:none;">
+                            <img src="" alt="Preview" class="rounded-circle" style="width:60px;height:60px;object-fit:cover;">
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-mt-green">
+                            <i class="bi bi-check-lg"></i> Save Changes
+                        </button>
+                        <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-key"></i> Change Password
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Account Info Card -->
+        <div class="card stat-card mt-3">
+            <div class="card-body">
+                <h6 class="fw-bold mb-3"><i class="bi bi-info-circle"></i> Account Info</h6>
+                <div class="row g-2 small">
+                    <div class="col-6">
+                        <span class="text-muted">Role:</span><br>
+                        <span class="badge bg-mt-green">{{ current_user.role | replace('_', ' ') | title }}</span>
+                    </div>
+                    <div class="col-6">
+                        <span class="text-muted">Status:</span><br>
+                        <span class="badge bg-{{ 'success' if current_user.is_active else 'danger' }}">{{ 'Active' if current_user.is_active else 'Inactive' }}</span>
+                    </div>
+                    <div class="col-6">
+                        <span class="text-muted">Member Since:</span><br>
+                        {{ current_user.created_at.strftime('%b %d, %Y') }}
+                    </div>
+                    {% if current_user.school %}
+                    <div class="col-6">
+                        <span class="text-muted">School:</span><br>
+                        {{ current_user.school.name }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('profilePicInput').addEventListener('change', function(e) {
+    var preview = document.getElementById('profilePicPreview');
+    var file = e.target.files[0];
+    if (file) {
+        var reader = new FileReader();
+        reader.onload = function(ev) {
+            preview.style.display = 'block';
+            preview.querySelector('img').src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        preview.style.display = 'none';
+    }
+});
+</script>
+{% endblock %}

@@ -15,7 +15,9 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_ENABLED = True
     RECEIPTS_FOLDER = os.path.join(basedir, 'app', 'static', 'receipts')
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB max upload
+    UPLOAD_FOLDER = os.path.join(basedir, 'app', 'static', 'uploads')
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5 MB max upload
+    ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 
 class DevelopmentConfig(Config):

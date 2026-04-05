@@ -14,6 +14,7 @@ class School(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
     address = db.Column(db.String(500))
+    logo_path = db.Column(db.String(500), nullable=True)
     week_start_date = db.Column(db.Date, nullable=True, default=None)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -45,6 +46,8 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
     full_name = db.Column(db.String(200), nullable=False, default='')
+    email = db.Column(db.String(200), nullable=True)
+    profile_picture = db.Column(db.String(500), nullable=True)
     role = db.Column(db.String(20), nullable=False, default=ROLE_COLLECTOR)
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

@@ -1,5 +1,6 @@
 """Utility functions for the application."""
 
+import logging
 import uuid
 import os
 from datetime import datetime, date
@@ -10,6 +11,9 @@ from flask_login import current_user
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
+from werkzeug.utils import secure_filename
+
+logger = logging.getLogger(__name__)
 
 
 def role_required(*roles):
@@ -54,6 +58,51 @@ def generate_receipt_number():
     timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
     unique_id = uuid.uuid4().hex[:6].upper()
     return f"RCP-{timestamp}-{unique_id}"
+
+
+def allowed_image_file(filename):
+    """Check if the file has an allowed image extension."""
+    if '.' not in filename:
+        return False
+    ext = filename.rsplit('.', 1)[1].lower()
+    allowed = current_app.config.get(
+        'ALLOWED_IMAGE_EXTENSIONS', {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    )
+    return ext in allowed
+
+
+def save_upload_file(file_storage, subfolder=''):
+    """Save an uploaded file securely.
+
+    Args:
+        file_storage: werkzeug FileStorage object
+        subfolder: optional subfolder within uploads directory
+
+    Returns:
+        str: relative path from static/ or None on failure
+    """
+    if not file_storage or not file_storage.filename:
+        return None
+
+    if not allowed_image_file(file_storage.filename):
+        return None
+
+    filename = secure_filename(file_storage.filename)
+    unique_name = f"{uuid.uuid4().hex[:8]}_{filename}"
+
+    upload_dir = current_app.config['UPLOAD_FOLDER']
+    if subfolder:
+        upload_dir = os.path.join(upload_dir, subfolder)
+    os.makedirs(upload_dir, exist_ok=True)
+
+    filepath = os.path.join(upload_dir, unique_name)
+    file_storage.save(filepath)
+
+    # Return path relative to static/ for url_for('static', ...)
+    rel_path = os.path.relpath(filepath, os.path.join(
+        current_app.root_path, 'static'
+    ))
+    return rel_path
 
 
 def generate_pdf_receipt(payment, student, school):

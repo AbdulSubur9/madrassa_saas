@@ -1,16 +1,17 @@
 """Student management routes."""
 
-import os
-import uuid
+import logging
 from datetime import datetime
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import pandas as pd
 from app.extensions import db
-from app.models import Student, SchoolClass, AuditLog
+from app.models import Student, SchoolClass, AuditLog, Payment
 from app.students.forms import StudentForm, ClassForm, ImportForm
 from app.utils import role_required
+
+logger = logging.getLogger(__name__)
 
 students_bp = Blueprint('students', __name__, template_folder='../templates')
 
@@ -343,9 +344,54 @@ def delete_class(class_id):
     return redirect(url_for('students.list_classes'))
 
 
+@students_bp.route('/<int:student_pk>/delete', methods=['POST'])
+@login_required
+@role_required('super_admin', 'school_admin')
+def delete_student(student_pk):
+    """Delete a student and their payment records (admin only)."""
+    student = db.session.get(Student, student_pk)
+    if not student or student.school_id != current_user.school_id:
+        flash('Student not found.', 'danger')
+        return redirect(url_for('students.list_students'))
+
+    try:
+        student_name = student.full_name
+        student_sid = student.student_id
+
+        # Delete associated payments first
+        payment_count = Payment.query.filter_by(
+            student_id=student.id,
+            school_id=current_user.school_id
+        ).delete()
+
+        audit = AuditLog(
+            user_id=current_user.id,
+            action=(
+                f'Deleted student {student_name} (ID: {student_sid}) '
+                f'and {payment_count} associated payments'
+            )
+        )
+        db.session.add(audit)
+        db.session.delete(student)
+        db.session.commit()
+
+        flash(
+            f'Student "{student_name}" and {payment_count} '
+            f'payment record(s) deleted successfully.',
+            'success'
+        )
+    except Exception as e:
+        db.session.rollback()
+        logger.error('Student deletion failed: %s', e)
+        flash('Failed to delete student. Please try again.', 'danger')
+
+    return redirect(url_for('students.list_students'))
+
+
 def allowed_file(filename):
     """Check if file extension is allowed."""
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return ('.' in filename
+            and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS)
 
 
 @students_bp.route('/import', methods=['GET', 'POST'])
@@ -361,66 +407,108 @@ def import_students():
             return redirect(request.url)
 
         if not allowed_file(file.filename):
-            flash('Invalid file format. Please upload .xlsx or .csv files.', 'danger')
+            flash(
+                'Invalid file format. Please upload .xlsx or .csv.',
+                'danger'
+            )
             return redirect(request.url)
 
         try:
-            # Read the file
             filename = secure_filename(file.filename)
             if filename.endswith('.csv'):
                 df = pd.read_csv(file)
             else:
                 df = pd.read_excel(file)
 
-            # Required columns (dob and contact are optional)
-            required_cols = ['first_name', 'last_name', 'gender', 'guardian_name']
-            missing_cols = [col for col in required_cols if col not in df.columns]
+            required_cols = [
+                'first_name', 'last_name', 'gender', 'guardian_name'
+            ]
+            missing_cols = [
+                col for col in required_cols
+                if col not in df.columns
+            ]
             if missing_cols:
-                flash(f'Missing required columns: {", ".join(missing_cols)}', 'danger')
+                flash(
+                    'Missing required columns: '
+                    f'{", ".join(missing_cols)}',
+                    'danger'
+                )
                 return redirect(request.url)
 
             imported_count = 0
             skipped_rows = []
             current_year = datetime.now().year
 
-            # Process each row
             for idx, row in df.iterrows():
-                # Validate the row data
-                is_valid, error_msg = validate_student_data(row, idx)
+                is_valid, error_msg = validate_student_data(
+                    row, idx
+                )
                 if not is_valid:
-                    skipped_rows.append({'row': idx + 2, 'reason': error_msg})
+                    skipped_rows.append(
+                        {'row': idx + 2, 'reason': error_msg}
+                    )
                     continue
 
-                first_name = str(row.get('first_name', '')).strip()
-                last_name = str(row.get('last_name', '')).strip()
+                first_name = str(
+                    row.get('first_name', '')
+                ).strip()
+                last_name = str(
+                    row.get('last_name', '')
+                ).strip()
                 full_name = f"{first_name} {last_name}"
-                gender = str(row.get('gender', '')).strip().lower()
-                guardian_name = str(row.get('guardian_name', '')).strip()
+                gender = str(
+                    row.get('gender', '')
+                ).strip().lower()
+                guardian_name = str(
+                    row.get('guardian_name', '')
+                ).strip()
                 contact = str(row.get('contact', '')).strip()
 
-                # Handle student_id - use existing or generate new
-                student_id = str(row.get('student_id', '')).strip()
-                if not student_id or student_id.lower() == 'nan' or student_id == '':
-                    # Generate new ID in TAQWA-YYYY-NNNN format
-                    student_id = generate_student_id(current_user.school_id, current_year)
+                student_id = str(
+                    row.get('student_id', '')
+                ).strip()
+                if (not student_id
+                        or student_id.lower() == 'nan'
+                        or student_id == ''):
+                    student_id = generate_student_id(
+                        current_user.school_id, current_year
+                    )
                 else:
-                    # Check for duplicate within the school
                     existing = Student.query.filter_by(
                         school_id=current_user.school_id,
                         student_id=student_id
                     ).first()
                     if existing:
-                        skipped_rows.append({'row': idx + 2, 'reason': f'Duplicate student_id: {student_id}'})
+                        skipped_rows.append({
+                            'row': idx + 2,
+                            'reason': (
+                                'Duplicate student_id: '
+                                f'{student_id}'
+                            )
+                        })
                         continue
 
-                # Create student
                 student = Student(
                     school_id=current_user.school_id,
                     student_id=student_id,
                     full_name=full_name,
-                    gender=gender.capitalize() if gender in ['male', 'female'] else gender,
-                    guardian_name=guardian_name if guardian_name and guardian_name.lower() != 'nan' else None,
-                    guardian_phone=contact if contact and contact.lower() != 'nan' else None,
+                    gender=(
+                        gender.capitalize()
+                        if gender in ['male', 'female']
+                        else gender
+                    ),
+                    guardian_name=(
+                        guardian_name
+                        if guardian_name
+                        and guardian_name.lower() != 'nan'
+                        else None
+                    ),
+                    guardian_phone=(
+                        contact
+                        if contact
+                        and contact.lower() != 'nan'
+                        else None
+                    ),
                     status='active'
                 )
                 db.session.add(student)
@@ -428,23 +516,33 @@ def import_students():
 
             db.session.commit()
 
-            # Audit log
             audit = AuditLog(
                 user_id=current_user.id,
-                action=f'Imported {imported_count} students from Excel/CSV'
+                action=(
+                    f'Imported {imported_count} students '
+                    f'from Excel/CSV'
+                )
             )
             db.session.add(audit)
             db.session.commit()
 
-            flash(f'Successfully imported {imported_count} students.', 'success')
-            
-            # Show summary if there were skipped rows
+            flash(
+                f'Successfully imported {imported_count} students.',
+                'success'
+            )
+
             if skipped_rows:
-                flash(f'Skipped {len(skipped_rows)} rows. See details below.', 'warning')
-                return render_template('import_result.html', 
-                                       imported=imported_count, 
-                                       skipped=len(skipped_rows), 
-                                       skipped_rows=skipped_rows[:50])  # Limit to 50 for display
+                flash(
+                    f'Skipped {len(skipped_rows)} rows. '
+                    f'See details below.',
+                    'warning'
+                )
+                return render_template(
+                    'import_result.html',
+                    imported=imported_count,
+                    skipped=len(skipped_rows),
+                    skipped_rows=skipped_rows[:50]
+                )
 
             return redirect(url_for('students.list_students'))
 
