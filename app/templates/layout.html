@@ -197,6 +197,14 @@
                     </div>
                     {% endif %}
 
+
+                    {% if current_user.role in ['super_admin', 'school_admin'] %}
+                    <a class="nav-link {% if 'classes' in request.endpoint|default('') %}active{% endif %}"
+                       href="{{ url_for('students.list_classes') }}">
+                        <i class="bi bi-people-fill"></i> Classes
+                    </a>
+                    {% endif %}
+
                     <!-- Payments Dropdown -->
                     {% if current_user.role in ['super_admin', 'school_admin', 'collector'] %}
                     <div class="nav-item dropdown">
